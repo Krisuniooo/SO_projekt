@@ -7,9 +7,6 @@ std::vector<Product> products = {
 	{2, "Piegusek", 1.50, 15}
 };
 
-namespace CONFIG {
-	// Returns the number of trays that is equal to number of types of products
-	size_t NUM_PRODUCTS() {
-		return products.size();
-	}
+size_t NUM_PRODUCTS() {
+	return products.size();
 }

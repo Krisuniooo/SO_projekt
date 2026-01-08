@@ -9,7 +9,7 @@
 #include "../include/Shared.h"
 
 void Child_proc_test() {
-	SharedMemManager shm(CONFIG::SHARED_MEM_KEY_PATH, 'M', sizeof(SharedData), true);
+	SharedMemManager shm(SHARED_MEM_KEY_PATH, SHARED_MEM_KEY, sizeof(SharedData), true);
 
 	if(shm.getAddress() == nullptr) {
 		std::cerr << "Could not create shared memory\n";
@@ -35,7 +35,7 @@ void Parent_proc_test() {
 	// Just for tests
 	sleep(1);
 
-	SharedMemManager shm(CONFIG::SHARED_MEM_KEY_PATH, 'M', sizeof(SharedData), false);
+	SharedMemManager shm(SHARED_MEM_KEY_PATH, SHARED_MEM_KEY, sizeof(SharedData), false);
 
 	if(shm.getAddress() == nullptr)  {
 		std::cerr << "Could not open shared memory\n";
@@ -56,7 +56,7 @@ void Parent_proc_test() {
 
 int main() {
 	std::cout << sizeof(SharedData) << "\n";
-	std::cout << "Number of different products: " << CONFIG::NUM_PRODUCTS() << "\n";
+	std::cout << "Number of different products: " << NUM_PRODUCTS() << "\n";
 
 	std::cout << "Shared Memory test" << "\n";
 

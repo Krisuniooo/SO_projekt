@@ -26,4 +26,6 @@ class SharedMemManager {
 		void* getAddress() const;
 };
 
+bool setupKeyFile(const std::string& key_path);
+
 #endif

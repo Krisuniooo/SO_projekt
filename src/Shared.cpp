@@ -13,22 +13,9 @@
 #include <fstream>
 
 SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size, bool create) : is_owner(create) {
-
-	if(create) {
-		std::cout << "\t" << path << "\n";
-		std::ofstream file(path);
-		if(!file) {
-			std::cerr << "Could not create key file\n";
-			return;
-		}
-		file.close();
-	} else {
-		std::ifstream file(path);
-		if(!file) {
-			std::cerr << "key file does not exist\n";
-			return;
-		}
-		file.close();
+	if(setupKeyFile(path) == false) {
+		std::cerr << "Could not create nor access key file: " << strerror(errno) << "\n";
+		exit(1);
 	}
 
 	key_t key = ftok(path.c_str(), id);
@@ -39,14 +26,12 @@ SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size
 	}
 
 	int flags = (create ? IPC_CREAT | IPC_EXCL | 0666 : 0666);
-	//std::cout << "\t " << key << " " << size << " " << flags << "\n";
 	shm_id = shmget(key, size, flags);
 
 	if(shm_id == -1) {
-		std::cerr << "shmget Error (create): " << strerror(errno) << "\n";
+		std::cerr << "shmget Error: " << strerror(errno) << "\n";
 		exit(1);
 	}
-	std::cout << "\t " << key << "\n";
 
 	shm_addr = shmat(shm_id, nullptr, 0);
 
@@ -60,9 +45,11 @@ SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size
 SharedMemManager::~SharedMemManager() {
 	if(!shm_addr) return;
 
-	shmdt(shm_addr);
+	if(shmdt(shm_addr) == -1) {
+		std::cerr << "shmdt Error: " << strerror(errno) << "\n";
+		exit(1);
+	}
 	shm_addr = nullptr;
-
 
 	if(!is_owner) return;
 
@@ -70,10 +57,6 @@ SharedMemManager::~SharedMemManager() {
 		std::cerr << "shmctl Error (delete): " << strerror(errno) << "\n";
 		exit(1);
 	}
-
-	shm_id = -1;
-	is_owner = false;
-	shm_addr = nullptr;
 }
 
 int SharedMemManager::getSize() const {
@@ -82,4 +65,14 @@ int SharedMemManager::getSize() const {
 
 void* SharedMemManager::getAddress() const {
 	return shm_addr;
+}
+
+bool setupKeyFile(const std::string& path) {
+	std::ofstream file(path, std::ios::app);
+	
+	if(!file.is_open()) 
+		return false;
+		
+	file.close();
+	return true;
 }
