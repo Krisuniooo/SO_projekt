@@ -5,6 +5,8 @@
 #include <sys/shm.h>
 #include <sys/stat.h>
 
+#include <sys/sem.h>
+
 #include <iostream>
 #include <string.h>
 #include <stdlib.h>
@@ -17,6 +19,7 @@ SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size
 		std::cerr << "Could not create nor access key file: " << strerror(errno) << "\n";
 		exit(1);
 	}
+	
 
 	key_t key = ftok(path.c_str(), id);
 
@@ -24,6 +27,7 @@ SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size
 		std::cerr << "ftok Error: " << strerror(errno) << "\n";
 		exit(1);
 	}
+	
 
 	int flags = (create ? IPC_CREAT | IPC_EXCL | 0666 : 0666);
 	shm_id = shmget(key, size, flags);
@@ -32,6 +36,7 @@ SharedMemManager::SharedMemManager(const std::string& path, char id, size_t size
 		std::cerr << "shmget Error: " << strerror(errno) << "\n";
 		exit(1);
 	}
+	
 
 	shm_addr = shmat(shm_id, nullptr, 0);
 
@@ -63,9 +68,65 @@ int SharedMemManager::getSize() const {
 	return sizeof(SharedData);
 }
 
+int SharedMemManager::getID() const {
+	return shm_id;
+}
+
 void* SharedMemManager::getAddress() const {
 	return shm_addr;
 }
+
+
+Semaphore::Semaphore(const std::string& path, char id, int init_val){
+	key_t key = ftok(path.c_str(), id);
+	
+	if(key == -1) {
+		std::cerr << "ftok Error: " << strerror(errno) << "\n";
+		exit(1);
+	}
+	
+	// ...
+}
+
+void Semaphore::waitSem(int sem_num) {
+	struct sembuf sop;
+	
+	sop.sem_num = sem_num; 
+	sop.sem_op = -1;
+	sop.sem_flg = SEM_UNDO;
+	
+	if(semop(sem_id, &sop, 1) == -1) {
+		std::cerr << "semop Error: " << strerror(errno) << "\n";
+	}
+}
+
+void Semaphore::signalSem(int sem_num) {
+	struct sembuf sop;
+	
+	sop.sem_num = sem_num; 
+	sop.sem_op = 1;
+	sop.sem_flg = SEM_UNDO;
+	
+	if(semop(sem_id, &sop, 1) == -1) {
+		std::cerr << "semop Error: " << strerror(errno) << "\n";
+	}
+}
+
+void Semaphore::writeSem(int sem_num, int new_val) {
+	int val = semctl(sem_id, sem_num, SETVAL, new_val);
+	if(val == -1) {
+		std::cerr << "semctl Error (SETVAL): " << strerror(errno) << "\n";
+	}
+}
+
+int Semaphore::readSem(int sem_num) {
+	int val = semctl(sem_id, sem_num, GETVAL);
+	if(val == -1) {
+		std::cerr << "semctl Error (GETVAL): " << strerror(errno) << "\n";
+	}
+	return val;
+}
+
 
 bool setupKeyFile(const std::string& path) {
 	std::ofstream file(path, std::ios::app);

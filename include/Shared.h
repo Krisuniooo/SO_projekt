@@ -19,11 +19,27 @@ class SharedMemManager {
 		bool is_owner;
 
 	public:
-		SharedMemManager(const std::string& key_path, char id, size_t size, bool is_owner);
+		SharedMemManager(const std::string& key_path, char id, size_t size, bool is_owner = false);
 		~SharedMemManager();
 
 		int getSize() const;
+		int getID() const;
 		void* getAddress() const;
+};
+
+class Semaphore {
+	private:
+		int sem_id;
+	
+	public:
+		Semaphore(const std::string& key_path, char id, int init_val = 1);
+		~Semaphore();
+		
+		void waitSem(int sem_num);
+		void signalSem(int sem_num);
+		void writeSem(int sem_num, int new_val);
+		int readSem(int sem_num);
+	
 };
 
 bool setupKeyFile(const std::string& key_path);
