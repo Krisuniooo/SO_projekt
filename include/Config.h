@@ -14,6 +14,14 @@
 
 #define LOGGER_PATH "../data/data.log"
 
+struct SharedData {
+	bool is_running; 
+	bool is_open;
+
+	int current_customers_count;
+	int today_customers_count;
+};
+
 enum class SemaphoreTypes {
 	TEST,
 	TEST2,
