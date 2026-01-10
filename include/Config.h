@@ -2,7 +2,6 @@
 #define CONFIG_H
 
 #include "Product.h"
-#include <vector>
 #include <string>
 
 
@@ -11,6 +10,9 @@
 
 #define SEMAPHORE_KEY_PATH "/tmp/ciastkarnia_sem"
 #define SEMAPHORE_KEY 'S'
+
+#define MESSAGE_QUEUE_KEY_PATH "/tmp/ciastkarnia_mq"
+#define MESSAGE_QUEUE_KEY 'Q'
 
 #define LOGGER_PATH "../data/data.log"
 
@@ -28,9 +30,11 @@ enum class SemaphoreTypes {
 	SEM_COUNT
 };
 
-// Global product vector
-extern std::vector<Product> products;
-
-size_t NUM_PRODUCTS();
+const Product products[3] = {
+	//id, name, price, max_stock
+	{0, "Kremowka", 3.50, 10},
+	{1, "WZ", 9.99, 5},
+	{2, "Piegusek", 1.50, 15}
+};
 
 #endif

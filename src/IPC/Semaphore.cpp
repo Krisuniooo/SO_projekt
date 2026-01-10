@@ -18,7 +18,17 @@ bool SEMAPHORE::init() {
 		return false;
 	}
 	
-	return SEMAPHORE::create();
+	bool createSuccess = SEMAPHORE::create();
+	
+	if(createSuccess == false) {
+		std::cerr << "Could not create set of semaphores\n";
+		return false;
+	}
+	
+	for(int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); i++) 
+		SEMAPHORE::setValue(i, 1);
+	
+	return true;
 }
 
 bool SEMAPHORE::create() {

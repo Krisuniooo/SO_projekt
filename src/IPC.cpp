@@ -20,5 +20,13 @@ bool IPC::init() {
 		return false;
 	}
 	
+	bool mq_initialized = MESSAGEQUEUE::init();
+	if(mq_initialized) {
+		std::cout << "\n\tMESSAGEQUEUE initialized\n";
+	} else {
+		std::cout << "\n\tMESSAGEQUEUE initialization failed\n";
+		return false;
+	}
+	
 	return true;
 }

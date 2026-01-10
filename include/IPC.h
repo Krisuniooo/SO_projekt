@@ -3,6 +3,7 @@
 
 #include "IPC/SharedMemory.h"
 #include "IPC/Semaphore.h"
+#include "IPC/MessageQueue.h"
 
 namespace IPC {
 	bool init();

@@ -28,7 +28,6 @@ int main() {
 
 	int semNum = static_cast<int>(SemaphoreTypes::TEST);
     
-	SEMAPHORE::setValue(semNum, 1);
 	std::cout << "New semaphore value: " << SEMAPHORE::getValue(semNum) << std::endl;
     
 	std::cout << "Locking sem\n";
