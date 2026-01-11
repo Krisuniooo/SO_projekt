@@ -14,7 +14,8 @@
 #define MESSAGE_QUEUE_KEY_PATH "/tmp/ciastkarnia_mq"
 #define MESSAGE_QUEUE_KEY 'Q'
 
-#define LOGGER_PATH "../data/data.log"
+#define LOGGER_PATH "data/data.log"
+#define LOG_MAX_SIZE 255
 
 struct SharedData {
 	bool is_running; 
@@ -30,11 +31,18 @@ enum class SemaphoreTypes {
 	SEM_COUNT
 };
 
-const Product products[3] = {
+struct LogMessage {
+	long mtype;
+	char text[LOG_MAX_SIZE];
+};
+
+/*
+inline constexpr Product products[3] = {
 	//id, name, price, max_stock
 	{0, "Kremowka", 3.50, 10},
 	{1, "WZ", 9.99, 5},
 	{2, "Piegusek", 1.50, 15}
 };
+*/
 
 #endif

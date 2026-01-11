@@ -15,7 +15,6 @@ namespace SEMAPHORE {
 	void setValue(int sem_num, int value);
 	int getValue(int sem_num);
 	bool destroy();
-	bool setupKeyFile();
 }
 
 #endif

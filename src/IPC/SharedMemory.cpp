@@ -1,5 +1,6 @@
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/Config.h"
+#include "../../include/Utils.h"
 
 #include <iostream>
 #include <string.h>
@@ -12,7 +13,7 @@ static int shm_id = -1;
 static void* shm_ptr = nullptr;
 
 bool SHAREDMEMORY::init() {
-	bool setupSuccess = SHAREDMEMORY::setupKeyFile();
+	bool setupSuccess = UTILS::setupKeyFile(SHARED_MEM_KEY_PATH);
 	
 	if(setupSuccess == false) {
 		std::cerr << "Could not create key file\n";
@@ -84,14 +85,4 @@ void SHAREDMEMORY::destroy() {
 		std::cerr << "shmctl Error (delete): " << strerror(errno) << "\n";
 	}
 	shm_id = -1;
-}
-
-bool SHAREDMEMORY::setupKeyFile() {
-	std::ofstream file(SHARED_MEM_KEY_PATH, std::ios::app);
-	
-	if(!file.is_open()) 
-		return false;
-		
-	file.close();
-	return true;
 }

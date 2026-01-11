@@ -1,5 +1,6 @@
 #include "../../include/IPC/MessageQueue.h"
 #include "../../include/Config.h"
+#include "../../include/Utils.h"
 
 #include <iostream>
 #include <string.h>
@@ -8,29 +9,29 @@
 #include <cerrno>
 #include <fstream>
 
-static int mq_testmq_id = -1;
+static int mq_logger_id = -1;
 
 bool MESSAGEQUEUE::init() {
-	bool setupSuccess = MESSAGEQUEUE::setupKeyFile();
+	bool setupSuccess = UTILS::setupKeyFile(MESSAGE_QUEUE_KEY_PATH);
 	
 	if(setupSuccess == false) {
 		std::cerr << "Could not create key file\n";
 		return false;
 	}
 	
-	return MESSAGEQUEUE::create();
+	return MESSAGEQUEUE::createLoggerMQ();
 }
 
-bool MESSAGEQUEUE::create() { 
-	mq_testmq_id = MESSAGEQUEUE::getID(IPC_CREAT | IPC_EXCL | 0600);
+bool MESSAGEQUEUE::createLoggerMQ() { 
+	mq_logger_id = MESSAGEQUEUE::getLoggerID(IPC_CREAT | IPC_EXCL | 0600);
 	
-	if(mq_testmq_id == -1) return false;
+	if(mq_logger_id == -1) return false;
 	
 	return true;
 }
 
-int MESSAGEQUEUE::getID(int flags) {
-	if(mq_testmq_id != -1) return mq_testmq_id;
+int MESSAGEQUEUE::getLoggerID(int flags) {
+	if(mq_logger_id != -1) return mq_logger_id;
 
 	key_t key = ftok(MESSAGE_QUEUE_KEY_PATH, MESSAGE_QUEUE_KEY);
 
@@ -39,22 +40,11 @@ int MESSAGEQUEUE::getID(int flags) {
 		return -1;
 	}
 	
-	mq_testmq_id = msgget(key, flags);
+	mq_logger_id = msgget(key, flags);
 	
-	if(mq_testmq_id == -1) {
+	if(mq_logger_id == -1) {
 		std::cerr << "semget Error: " << strerror(errno) << "\n";
 	}
 	
-	return mq_testmq_id;
-}
-
-
-bool MESSAGEQUEUE::setupKeyFile() {
-	std::ofstream file(MESSAGE_QUEUE_KEY_PATH, std::ios::app);
-	
-	if(!file.is_open()) 
-		return false;
-		
-	file.close();
-	return true;
+	return mq_logger_id;
 }

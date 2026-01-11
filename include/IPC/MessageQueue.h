@@ -8,9 +8,8 @@
 namespace MESSAGEQUEUE {
 	bool init();
 	
-	bool create();
-	int getID(int flags = 0600);
-	bool setupKeyFile();
+	bool createLoggerMQ();
+	int getLoggerID(int flags = 0600);
 }
 
 #endif

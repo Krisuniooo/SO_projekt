@@ -13,7 +13,6 @@ namespace SHAREDMEMORY {
 	void* attach(); 
 	bool detach();
 	void destroy();
-	bool setupKeyFile();
 	
 }
 

@@ -1,5 +1,6 @@
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/Config.h"
+#include "../../include/Utils.h"
 
 #include <iostream>
 #include <string.h>
@@ -11,7 +12,7 @@
 static int sem_id = -1;
 
 bool SEMAPHORE::init() {
-	bool setupSuccess = SEMAPHORE::setupKeyFile();
+	bool setupSuccess = UTILS::setupKeyFile(SEMAPHORE_KEY_PATH);
 	
 	if(setupSuccess == false) {
 		std::cerr << "Could not create key file\n";
@@ -127,14 +128,4 @@ int SEMAPHORE::getValue(int sem_num) {
 	}
 	
 	return value;
-}
-
-bool SEMAPHORE::setupKeyFile() {
-	std::ofstream file(SEMAPHORE_KEY_PATH, std::ios::app);
-	
-	if(!file.is_open()) 
-		return false;
-		
-	file.close();
-	return true;
 }
