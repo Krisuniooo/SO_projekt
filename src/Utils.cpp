@@ -12,3 +12,10 @@ bool UTILS::setupKeyFile(const char* path) {
 	file.close();
 	return true;
 }
+
+void UTILS::getTimestamp(char* buffer, const unsigned int bufferSize) {
+    time_t now = time(nullptr);
+    struct tm timeinfo;
+    localtime_r(&now, &timeinfo);
+    strftime(buffer, bufferSize, "%Y-%m-%d %H:%M:%S", &timeinfo);
+}

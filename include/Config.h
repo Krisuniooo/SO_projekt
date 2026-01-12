@@ -28,6 +28,7 @@ struct SharedData {
 enum class SemaphoreTypes {
 	TEST,
 	TEST2,
+	LOGGER_SEM,
 	SEM_COUNT
 };
 

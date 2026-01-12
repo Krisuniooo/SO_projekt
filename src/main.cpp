@@ -61,11 +61,8 @@ int main() {
 	} else {
 		std::cerr << "Sem locking error\n";
 	}
-
-	SHAREDMEMORY::detach();
 	LOGGER::endLogThread();
-	
-	
+	SHAREDMEMORY::detach();
 
 	return 0;
 }

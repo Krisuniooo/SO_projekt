@@ -2,6 +2,7 @@
 #include "../include/Config.h"
 #include "../include/Utils.h"
 #include "../include/IPC/MessageQueue.h"
+#include "../include/IPC/Semaphore.h"
 
 #include <iostream>
 #include <string>
@@ -52,16 +53,19 @@ void* LOGGER::logThread(void* arg) {
 	}
 	
 	LogMessage msg;
+	char ts[32];
 	logger_thread_run = true;
 	
 	while(logger_thread_run) {
 		if (msgrcv(mq_logger_id, &msg, sizeof(msg.text), 0, 0) != -1) {
-			file << "[LOG] " << msg.text;
+			UTILS::getTimestamp(ts, sizeof(ts));
+			file << "[" << ts << "] " << msg.text;
 			file.flush();
 		}
 	}
 	
 	file.close();
+	
 	return nullptr;
 }
 
