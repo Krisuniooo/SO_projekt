@@ -19,6 +19,14 @@
 
 #define DEBUG_MESSAGES 0
 
+#define MAX_CLIENT_INSIDE 10 	// N
+#define OPENING_HOUR 8 		// Tp
+#define CLOSING_HOUR 20 	// Tk
+
+#define SIMULATION_MINUTE 10000	// simulation minute in usleep
+#define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
+
+
 struct SharedData {
 	bool is_running; 
 	bool is_open;

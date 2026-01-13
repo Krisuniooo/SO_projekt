@@ -5,6 +5,10 @@ namespace UTILS {
 	bool setupKeyFile(const char* path);
 	
 	void getTimestamp(char* buffer, const unsigned int bufferSize);
+	
+	int getRandom(int min, int max);
+	float getRandom(float min, float max);
+	double getRandom(double min, double max);
 }
 
 #endif
