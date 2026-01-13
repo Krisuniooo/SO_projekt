@@ -129,3 +129,21 @@ int SEMAPHORE::getValue(int sem_num) {
 	
 	return value;
 }
+
+bool SEMAPHORE::destroy() {
+	if(sem_id == -1) {
+		std::cerr << "semctl error (IPC_RMID): Semaphore not initialized\n";
+		return false;
+	} 
+	
+	for(int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); i++) {
+		if(semctl(sem_id, i, IPC_RMID, 0) == -1) {
+			#if DEBUG_MESSAGES == 1
+				std::cout << "semctl warn (IPC_RMID): could not remove sem_num " << std::to_string(i) << "\n";
+			#endif
+		}
+	}
+	
+	sem_id = -1;
+	return true;
+}

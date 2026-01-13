@@ -66,7 +66,12 @@ void* LOGGER::logThread(void* arg) {
 	
 	file.close();
 	
+	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX));
+	
 	return nullptr;
 }
 
-void LOGGER::endLogThread() { logger_thread_run = false; }
+void LOGGER::endLogThread() { 
+	LOGGER::log("\n");
+	logger_thread_run = false; 
+}

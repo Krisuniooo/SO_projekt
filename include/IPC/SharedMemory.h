@@ -12,7 +12,7 @@ namespace SHAREDMEMORY {
 	int getID(int flags = 0600);
 	void* attach(); 
 	bool detach();
-	void destroy();
+	bool destroy();
 	
 }
 

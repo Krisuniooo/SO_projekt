@@ -7,6 +7,8 @@
 
 namespace IPC {
 	bool init();
+	
+	bool destroyAll();
 }
 
 #endif

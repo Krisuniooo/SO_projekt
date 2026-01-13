@@ -48,3 +48,17 @@ int MESSAGEQUEUE::getLoggerID(int flags) {
 	
 	return mq_logger_id;
 }
+
+bool MESSAGEQUEUE::destroyLogger() {
+	if(mq_logger_id == -1) {
+		std::cerr << "msgctl error (IPC_RMID): Message queue not initialized\n";
+		return false;
+	} 
+	
+	if(msgctl(mq_logger_id, IPC_RMID, 0) == -1) {
+		std::cerr << "msgctl error (IPC_RMID): " << strerror(errno) << "\n";
+		return false;
+	}
+	mq_logger_id = -1;
+	return true;
+}

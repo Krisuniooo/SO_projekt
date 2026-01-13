@@ -22,6 +22,7 @@ int main() {
     		std::cerr << "IPC initialization error \n";
     		return 1;
     	}
+    	SEMAPHORE::setValue(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX), 0);
     	
 	pthread_t thread_id;
 	if (pthread_create(&thread_id, nullptr, LOGGER::logThread, nullptr) != 0) {
@@ -61,8 +62,17 @@ int main() {
 	} else {
 		std::cerr << "Sem locking error\n";
 	}
+	
 	LOGGER::endLogThread();
-	SHAREDMEMORY::detach();
+	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX))) {
+		// wait till thread gets terminated
+		pthread_join(thread_id, nullptr);
+	}
+	
+	bool destroy_success = IPC::destroyAll();
+	if(!destroy_success) {
+		std::cerr << "could not destroy IPC\n";
+	}
 
 	return 0;
 }

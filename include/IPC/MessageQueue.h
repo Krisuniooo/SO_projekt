@@ -10,6 +10,8 @@ namespace MESSAGEQUEUE {
 	
 	bool createLoggerMQ();
 	int getLoggerID(int flags = 0600);
+	
+	bool destroyLogger();
 }
 
 #endif

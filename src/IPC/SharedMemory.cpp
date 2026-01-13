@@ -78,11 +78,13 @@ bool SHAREDMEMORY::detach() {
 	return true;
 }
 
-void SHAREDMEMORY::destroy() {
-	if(shm_id == -1) return;
+bool SHAREDMEMORY::destroy() {
+	if(shm_id == -1) return false;
 	
 	if(shmctl(shm_id, IPC_RMID, nullptr) == -1) {
 		std::cerr << "shmctl Error (delete): " << strerror(errno) << "\n";
+		return false;
 	}
 	shm_id = -1;
+	return true;
 }

@@ -17,6 +17,8 @@
 #define LOGGER_PATH "data/data.log"
 #define LOG_MAX_SIZE 255
 
+#define DEBUG_MESSAGES 0
+
 struct SharedData {
 	bool is_running; 
 	bool is_open;
@@ -28,7 +30,7 @@ struct SharedData {
 enum class SemaphoreTypes {
 	TEST,
 	TEST2,
-	LOGGER_SEM,
+	LOGGER_SEM_MUTEX,
 	SEM_COUNT
 };
 

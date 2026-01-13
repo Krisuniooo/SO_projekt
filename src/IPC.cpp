@@ -24,3 +24,12 @@ bool IPC::init() {
 	
 	return true;
 }
+
+bool IPC::destroyAll() {
+	bool a = SHAREDMEMORY::detach();
+	bool b = SHAREDMEMORY::destroy();
+	bool c = SEMAPHORE::destroy();
+	bool d = MESSAGEQUEUE::destroyLogger();
+
+	return (a && b && c && d);
+}
