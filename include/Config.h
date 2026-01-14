@@ -19,17 +19,24 @@
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 10 	// N
-#define OPENING_HOUR 8 		// Tp
-#define CLOSING_HOUR 20 	// Tk
+#define MAX_CLIENT_INSIDE 10 				// N
+#define MAX_CASH_REGISTERS (MAX_CLIENT_INSIDE / 2)	//K
+#define OPENING_HOUR 8 				// Tp
+#define CLOSING_HOUR 20 				// Tk
 
-#define SIMULATION_MINUTE 10000	// simulation minute in usleep
+#define SIMULATION_MINUTE 10000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
 
+struct Tray {
+	int in_stock;
+};
 
 struct SharedData {
 	bool is_running; 
 	bool is_open;
+	
+	bool is_stocktaking; 	// signal1
+	bool is_evacuation; 	// signal2 
 
 	int current_customers_count;
 	int today_customers_count;

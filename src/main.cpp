@@ -5,12 +5,24 @@
 #include <sys/sem.h>
 #include <sys/wait.h>
 #include <pthread.h>
+#include <signal.h>
 
 #include "../include/IPC.h"
 #include "../include/Logger.h"
 #include "../include/Config.h"
 
-
+void generateBaker() {
+	pid_t pid = fork();
+	if(pid == -1) {
+    		std::cerr << "IPC initialization error \n";
+    		exit(1);
+    	} else if(pid == 0) {
+    		std::cout << "Generating Baker\n";
+    		execl("./baker", "baker", NULL);
+    		std::cerr << "Baker process could not be created! \n";
+    		exit(1);
+    	}
+}
 
 int main() {
     	if (!LOGGER::init()) {
@@ -29,6 +41,8 @@ int main() {
 		std::cerr << "Thread creation failed";
 		return 1;
 	}
+	
+	generateBaker();
     	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	if (data == (void*)-1) {
@@ -38,36 +52,10 @@ int main() {
 		std::cout << "Shared memory attached successfully\n";
 		LOGGER::log("Shared memory attached successfully\n");
 	}
-
-	data->is_running = true;
-	data->current_customers_count = 7;
-	std::cout << "is_running: " << data->is_running << ",\t customers = " << data->current_customers_count << "\n";
-
-	int semNum = static_cast<int>(SemaphoreTypes::TEST);
-    
-	std::cout << "New semaphore value: " << SEMAPHORE::getValue(semNum) << "\n";
-	LOGGER::log("Changing semaphore value\n");
-    
-	std::cout << "Locking sem\n";
-	if (SEMAPHORE::lock(semNum)) {
-		std::cout << "Sem locked\n";
-		LOGGER::log("Sem locked\n");
-        	sleep(1); 
-        
-        	std::cout << "Unlocking sem\n";
-		if (SEMAPHORE::unlock(semNum)) {
-			std::cout << "Sem unlocked\n";
-			LOGGER::log("Sem unlocked\n");
-		}
-	} else {
-		std::cerr << "Sem locking error\n";
-	}
 	
 	LOGGER::endLogThread();
-	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX))) {
-		// wait till thread gets terminated
-		pthread_join(thread_id, nullptr);
-	}
+
+	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX));
 	
 	bool destroy_success = IPC::destroyAll();
 	if(!destroy_success) {
