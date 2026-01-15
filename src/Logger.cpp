@@ -8,13 +8,28 @@
 #include <string>
 #include <fstream>
 #include <cstring>
+#include <pthread.h>
+#include <unistd.h>
 
-static bool logger_thread_run = false;
+static bool logger_thread_end;
+static pthread_t thread_id;
 
 bool LOGGER::init() {
 	bool setupSuccess = UTILS::setupKeyFile(LOGGER_PATH);
 	
-	return setupSuccess;
+	if(setupSuccess == false) {
+		std::cerr << "Could not create key file\n";
+		return false;
+	}
+	
+	if (pthread_create(&thread_id, nullptr, LOGGER::logThread, nullptr) != 0) {
+		std::cerr << "Thread creation failed";
+		return false;
+	}
+	
+	logger_thread_end = false;
+	
+	return true;
 }
 
 void LOGGER::log(const std::string& message) {
@@ -54,9 +69,8 @@ void* LOGGER::logThread(void* arg) {
 	
 	LogMessage msg;
 	char ts[32];
-	logger_thread_run = true;
 	
-	while(logger_thread_run) {
+	while(!logger_thread_end) {
 		if (msgrcv(mq_logger_id, &msg, sizeof(msg.text), 0, 0) != -1) {
 			UTILS::getTimestamp(ts, sizeof(ts));
 			file << "[" << ts << "] " << msg.text;
@@ -64,14 +78,23 @@ void* LOGGER::logThread(void* arg) {
 		}
 	}
 	
-	file.close();
+	// read rest of the mq
+	while (msgrcv(mq_logger_id, &msg, sizeof(msg.text), 0, IPC_NOWAIT) != -1) {
+		UTILS::getTimestamp(ts, sizeof(ts));
+		file << "[" << ts << "] " << msg.text;
+	}
 	
-	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX));
+	UTILS::getTimestamp(ts, sizeof(ts));
+	file << "[" << ts << "] " << "Logger stopped\n";
+	file.flush();
+	
+	file.close();
 	
 	return nullptr;
 }
 
 void LOGGER::endLogThread() { 
-	LOGGER::log("\n");
-	logger_thread_run = false; 
+	logger_thread_end = true; 
+	LOGGER::log("\n"); // empty message to wake up msgrcv
+	pthread_join(thread_id, nullptr);
 }

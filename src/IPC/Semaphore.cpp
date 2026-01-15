@@ -67,7 +67,7 @@ bool SEMAPHORE::lock(int sem_num, bool trylock) {
 	
 	sop.sem_num = sem_num; 
 	sop.sem_op = -1;
-	sop.sem_flg = (trylock ? IPC_NOWAIT : 0);
+	sop.sem_flg = (trylock ? IPC_NOWAIT : 0) | SEM_UNDO;
 	
 	if(semop(sem_id, &sop, 1) == -1) {
 		if(trylock) {
@@ -87,6 +87,7 @@ bool SEMAPHORE::lock(int sem_num, bool trylock) {
 
 bool SEMAPHORE::unlock(int sem_num) {
 	if(sem_id == -1 && SEMAPHORE::getID() == -1) return false;
+	if(SEMAPHORE::getValue(sem_num) >=1) return true;
 
 	struct sembuf sop;
 	
@@ -136,12 +137,9 @@ bool SEMAPHORE::destroy() {
 		return false;
 	} 
 	
-	for(int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); i++) {
-		if(semctl(sem_id, i, IPC_RMID, 0) == -1) {
-			#if DEBUG_MESSAGES == 1
-				std::cout << "semctl warn (IPC_RMID): could not remove sem_num " << std::to_string(i) << "\n";
-			#endif
-		}
+	if(semctl(sem_id, 0, IPC_RMID, 0) == -1) {
+		std::cerr << "semctl error (IPC_RMID): Could not remove set\n";
+		return false;
 	}
 	
 	sem_id = -1;

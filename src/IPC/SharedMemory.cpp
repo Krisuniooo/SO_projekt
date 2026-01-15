@@ -12,6 +12,7 @@
 static int shm_id = -1;
 static void* shm_ptr = nullptr;
 
+// THIS SHOULD BE USED ONLY IN MAIN
 bool SHAREDMEMORY::init() {
 	bool setupSuccess = UTILS::setupKeyFile(SHARED_MEM_KEY_PATH);
 	
@@ -20,7 +21,40 @@ bool SHAREDMEMORY::init() {
 		return false;
 	}
 	
-	return SHAREDMEMORY::create();
+	bool createSuccess = SHAREDMEMORY::create();
+	
+	if(createSuccess == false) {
+		std::cerr << "Could not create shared memory block\n";
+		return false;
+	}
+	
+	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
+	if (data == (void*)-1) {
+		std::cerr << "Attach failed\n";
+		return false;
+	}
+	
+	data->is_running = false;
+	data->is_open = false;
+	data->is_stocktaking = false;
+	data->is_evacuation = false;
+	data->current_customers_count = 0;
+	data->today_customers_count = 0;
+	
+	for(int i = 0; i<PRODUCTS; i++) {
+		data->trays[i].id_product = i;
+		data->trays[i].label = Products_base[i].label;
+		data->trays[i].price = Products_base[i].price;
+			
+		data->trays[i].max_stock = Products_base[i].max_stock;
+		data->trays[i].in_stock = 0;
+		data->trays[i].sem_id = (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i + 1);
+			
+		data->trays[i].produced_total = 0;
+		data->trays[i].sold_total = 0;
+	}
+	
+	return true;
 }
 
 bool SHAREDMEMORY::create() {
