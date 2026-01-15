@@ -4,12 +4,20 @@
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/wait.h>
-#include <pthread.h>
 #include <signal.h>
 
 #include "../include/IPC.h"
 #include "../include/Logger.h"
 #include "../include/Config.h"
+
+bool checkConfig() {
+	if((static_cast<int>(SemaphoreTypes::PRODUCTS_BASE_END) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS) {
+		std::cerr << "Config error: N doesnt match semaphore count";
+		return false;
+	}
+	
+	return true;
+}
 
 void generateBaker() {
 	pid_t pid = fork();
@@ -25,41 +33,30 @@ void generateBaker() {
 }
 
 int main() {
-    	if (!LOGGER::init()) {
-    		std::cerr << "LOGGER initialization error \n";
+	if (!checkConfig()) {
+	    	std::cerr << "Config error \n";
     		return 1;
-    	}
+	}
 
     	if (!IPC::init()) {
     		std::cerr << "IPC initialization error \n";
     		return 1;
     	}
-    	SEMAPHORE::setValue(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX), 0);
     	
-	pthread_t thread_id;
-	if (pthread_create(&thread_id, nullptr, LOGGER::logThread, nullptr) != 0) {
-		std::cerr << "Thread creation failed";
-		return 1;
-	}
+	if (!LOGGER::init()) {
+    		std::cerr << "LOGGER initialization error \n";
+    		return 1;
+    	}
+    	LOGGER::log("Initialization successful\n");
 	
 	generateBaker();
-    	
-	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
-	if (data == (void*)-1) {
-		std::cerr << "Attach failed\n";
-		return 1;
-	} else {
-		std::cout << "Shared memory attached successfully\n";
-		LOGGER::log("Shared memory attached successfully\n");
-	}
 	
 	LOGGER::endLogThread();
-
-	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::LOGGER_SEM_MUTEX));
 	
 	bool destroy_success = IPC::destroyAll();
 	if(!destroy_success) {
 		std::cerr << "could not destroy IPC\n";
+		return 1;
 	}
 
 	return 0;
