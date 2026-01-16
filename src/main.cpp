@@ -10,6 +10,8 @@
 #include "../include/Logger.h"
 #include "../include/Config.h"
 
+static pid_t pid = -1;
+
 bool checkConfig() {
 	if((static_cast<int>(SemaphoreTypes::PRODUCTS_BASE_END) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS) {
 		std::cerr << "Config error: N doesnt match semaphore count";
@@ -32,7 +34,23 @@ void generateBaker() {
     	}
 }
 
+void handleSigInt(int sig) {
+	if(pid != -1) {
+		kill(pid, SIGTERM);
+		LOGGER::endLogThread();
+	
+		bool destroy_success = IPC::destroyAll();
+		if(!destroy_success) {
+			std::cerr << "could not destroy IPC\n";
+		}
+	}
+}
+
 int main() {
+	struct sigaction sa;
+	sa.sa_handler = handleSigInt;
+	sigaction(SIGINT, &sa, NULL);
+
 	if (!checkConfig()) {
 	    	std::cerr << "Config error \n";
     		return 1;
@@ -50,6 +68,8 @@ int main() {
     	LOGGER::log("Initialization successful\n");
 	
 	generateBaker();
+	
+	wait(NULL);
 	
 	LOGGER::endLogThread();
 	

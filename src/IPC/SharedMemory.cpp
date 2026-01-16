@@ -43,12 +43,9 @@ bool SHAREDMEMORY::init() {
 	
 	for(int i = 0; i<PRODUCTS; i++) {
 		data->trays[i].id_product = i;
-		data->trays[i].label = Products_base[i].label;
-		data->trays[i].price = Products_base[i].price;
-			
-		data->trays[i].max_stock = Products_base[i].max_stock;
+		
 		data->trays[i].in_stock = 0;
-		data->trays[i].sem_id = (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i + 1);
+		data->trays[i].sem_num = (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i + 1);
 			
 		data->trays[i].produced_total = 0;
 		data->trays[i].sold_total = 0;

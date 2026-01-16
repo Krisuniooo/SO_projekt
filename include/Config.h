@@ -15,7 +15,7 @@
 #define MESSAGE_QUEUE_KEY 'Q'
 
 #define LOGGER_PATH "data/data.log"
-#define LOG_MAX_SIZE 255
+#define LOG_MAX_SIZE 512
 
 #define DEBUG_MESSAGES 0
 
@@ -51,12 +51,9 @@ const ProductConfig Products_base[PRODUCTS] = {
 
 struct Tray {
 	int id_product;
-	std::string label;
-	float price;
 	
-	int max_stock;
 	int in_stock;
-	int sem_id;
+	int sem_num;
 	
 	int produced_total;
 	int sold_total;
