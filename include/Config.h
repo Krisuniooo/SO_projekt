@@ -28,12 +28,15 @@
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
 
 // Time for baking products
-#define BAKE_MIN_TIME 1.0f
-#define BAKE_MAX_TIME 3.0f
+#define BAKE_MIN_TIME 5.0f
+#define BAKE_MAX_TIME 10.0f
 
 // How many products should be added
-#define BAKE_MIN_PRODUCTS 2
-#define BAKE_MAX_PRODUCTS 6
+#define BAKE_MIN_PRODUCTS 1
+#define BAKE_MAX_PRODUCTS 3
+
+#define CUSTOMER_MAX_PRODUCT_DEMAND 4
+#define CUSTOMER_PRODUCT_BUY_TIME 1
 
 #define PRODUCTS 3
 
@@ -74,7 +77,7 @@ struct SharedData {
 
 enum class SemaphoreTypes {
 	SHARED_DATA_MUTEX,
-	CLIENTS_INSIDE_LIMIT,
+	CLIENTS_INSIDE,
 	
 	PRODUCTS_BASE, // do not remove used to track tray ids
 	WZ_MUTEX,
@@ -85,9 +88,31 @@ enum class SemaphoreTypes {
 	SEM_COUNT
 };
 
+struct SemaphoreInit {
+    SemaphoreTypes type;
+    int value;
+};
+
+const SemaphoreInit SemConfig[] = {
+	{ SemaphoreTypes::SHARED_DATA_MUTEX, 1 },
+	{ SemaphoreTypes::CLIENTS_INSIDE, MAX_CLIENT_INSIDE },
+
+	{ SemaphoreTypes::PRODUCTS_BASE, 1 },
+	{ SemaphoreTypes::WZ_MUTEX, 1 },
+	{ SemaphoreTypes::KREMOWKA_MUTEX, 1 },
+	{ SemaphoreTypes::PIEGUSEK_MUTEX, 1 },
+	{ SemaphoreTypes::PRODUCTS_BASE_END, 1 },
+	{ SemaphoreTypes::SEM_COUNT, 1 }
+};
+
 struct LogMessage {
 	long mtype;
 	char text[LOG_MAX_SIZE];
+};
+
+struct ShoppingList {
+	int id_product;
+	int count;
 };
 
 #endif

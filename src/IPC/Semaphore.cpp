@@ -26,8 +26,17 @@ bool SEMAPHORE::init() {
 		return false;
 	}
 	
-	for(int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); i++) 
-		SEMAPHORE::setValue(i, 1);
+	for (int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); ++i) {
+		int val = 1;
+		
+		for(auto j : SemConfig) {
+			if (static_cast<int>(j.type) == i) {
+				val = j.value;
+			}
+		}
+		
+		SEMAPHORE::setValue(i, val);
+	}
 	
 	return true;
 }
@@ -87,7 +96,6 @@ bool SEMAPHORE::lock(int sem_num, bool trylock) {
 
 bool SEMAPHORE::unlock(int sem_num) {
 	if(sem_id == -1 && SEMAPHORE::getID() == -1) return false;
-	if(SEMAPHORE::getValue(sem_num) >=1) return true;
 
 	struct sembuf sop;
 	
