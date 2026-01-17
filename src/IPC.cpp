@@ -22,6 +22,8 @@ bool IPC::init() {
 		return false;
 	}
 	
+	std::cout << "\t\t" << shm_initialized << sem_initialized << mq_initialized << "\n";
+	
 	return true;
 }
 
@@ -30,6 +32,7 @@ bool IPC::destroyAll() {
 	bool b = SHAREDMEMORY::destroy();
 	bool c = SEMAPHORE::destroy();
 	bool d = MESSAGEQUEUE::destroyLogger();
+	bool e = MESSAGEQUEUE::destroyRegister();
 
-	return (a && b && c && d);
+	return (a && b && c && d && e);
 }

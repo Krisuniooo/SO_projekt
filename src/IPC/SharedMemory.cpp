@@ -40,6 +40,7 @@ bool SHAREDMEMORY::init() {
 	data->is_evacuation = false;
 	data->current_customers_count = 0;
 	data->today_customers_count = 0;
+	data->second_register_active = false;
 	
 	for(int i = 0; i<PRODUCTS; i++) {
 		data->trays[i].id_product = i;

@@ -6,6 +6,7 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
+#include "../../include/IPC/MessageQueue.h"
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
 
@@ -26,7 +27,7 @@ std::vector<ShoppingList> generateShoppingList() {
 	}
 	
 	for(int i=0; i<number_of_products; i++) {
-		int product_id = UTILS::getRandom(0, product_ids.size());
+		int product_id = UTILS::getRandom(0, product_ids.size()-1);
 		int product_count = UTILS::getRandom(1, CUSTOMER_MAX_PRODUCT_DEMAND);
 		
 		ShoppingList item;
@@ -52,6 +53,7 @@ int main() {
 	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
+	int mq_register_id = MESSAGEQUEUE::getRegisterID();
 	
 	std::vector<ShoppingList> shopping_list = generateShoppingList();
 	
@@ -73,7 +75,7 @@ int main() {
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
-	for(const auto &i : shopping_list) {
+	for(auto &i : shopping_list) {
 		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
 		if(data->is_evacuation) {
@@ -86,9 +88,34 @@ int main() {
 			int take = std::min(i.count, data->trays[i.id_product].in_stock);
 			
 			data->trays[i.id_product].in_stock -= take;
-			LOGGER::log("Client " + getClientPIDstring() + " bought " + std::to_string(take) + " " + Products_base[i.id_product].label + ", wanted " + std::to_string(i.count) +"\n");
+			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(take) + " " + Products_base[i.id_product].label + ", wanted " + std::to_string(i.count) +"\n");
+			i.count = take;
 		}
 		SEMAPHORE::unlock(data->trays[i.id_product].sem_num);
+	}
+	
+	if (!data->is_evacuation) {
+		ReceiptMessage msg;
+		msg.mtype = 1;
+		msg.client = getpid();
+
+		bool create_receipt = false;
+		for(int i=0; i<PRODUCTS; i++) {
+			msg.counts[i] = 0;
+			for(auto &item : shopping_list) {
+				if(item.id_product == i) {
+					msg.counts[i] = item.count;
+					if(item.count > 0) create_receipt = true;
+				}
+			}
+		}
+
+		if(create_receipt) {
+			LOGGER::log("Client " + getClientPIDstring() + " stands in line to cashier\n");
+			if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+				std::cerr << "could not send shopping list to cashier\n";
+			}
+		}
 	}
 	
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));

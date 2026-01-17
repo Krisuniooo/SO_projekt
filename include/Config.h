@@ -13,13 +13,17 @@
 
 #define MESSAGE_QUEUE_KEY_PATH "/tmp/ciastkarnia_mq"
 #define MESSAGE_QUEUE_KEY 'Q'
+#define MESSAGE_QUEUE_REGISTER_KEY 'R'
 
 #define LOGGER_PATH "data/data.log"
 #define LOG_MAX_SIZE 512
 
+#define RECEIPT_PATH "data/receipt.log"
+#define LOG_MAX_LINE_SIZE 512
+
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 10 				// N
+#define MAX_CLIENT_INSIDE 5 				// N
 #define MAX_CASH_REGISTERS (MAX_CLIENT_INSIDE / 2)	//K
 #define OPENING_HOUR 8 				// Tp
 #define CLOSING_HOUR 20 				// Tk
@@ -36,7 +40,7 @@
 #define BAKE_MAX_PRODUCTS 3
 
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
-#define CUSTOMER_PRODUCT_BUY_TIME 1
+#define CUSTOMER_PRODUCT_BUY_TIME 4
 
 #define PRODUCTS 3
 
@@ -73,11 +77,14 @@ struct SharedData {
 	int today_customers_count;
 	
 	Tray trays[PRODUCTS];
+	
+	bool second_register_active;
 };
 
 enum class SemaphoreTypes {
 	SHARED_DATA_MUTEX,
 	CLIENTS_INSIDE,
+	RECEIPT_MUTEX,
 	
 	PRODUCTS_BASE, // do not remove used to track tray ids
 	WZ_MUTEX,
@@ -96,6 +103,7 @@ struct SemaphoreInit {
 const SemaphoreInit SemConfig[] = {
 	{ SemaphoreTypes::SHARED_DATA_MUTEX, 1 },
 	{ SemaphoreTypes::CLIENTS_INSIDE, MAX_CLIENT_INSIDE },
+	{ SemaphoreTypes::RECEIPT_MUTEX, 1 },
 
 	{ SemaphoreTypes::PRODUCTS_BASE, 1 },
 	{ SemaphoreTypes::WZ_MUTEX, 1 },
@@ -108,6 +116,12 @@ const SemaphoreInit SemConfig[] = {
 struct LogMessage {
 	long mtype;
 	char text[LOG_MAX_SIZE];
+};
+
+struct ReceiptMessage {
+	long mtype;
+	pid_t client;
+	int counts[PRODUCTS];
 };
 
 struct ShoppingList {

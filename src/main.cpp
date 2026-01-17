@@ -14,8 +14,10 @@
 static pthread_t client_gen_thread;
 std::vector<pid_t> active_pids;
 pthread_mutex_t pid_mutex = PTHREAD_MUTEX_INITIALIZER;
-static pid_t pid_baker = -1;
 static bool keep_generating = true;
+static pid_t pid_baker = -1;
+static pid_t pid_cashier1 = -1;
+static pid_t pid_cashier2 = -1;
 
 bool checkConfig() {
 	if((static_cast<int>(SemaphoreTypes::PRODUCTS_BASE_END) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS) {
@@ -45,22 +47,25 @@ void cleanup_zombies() {
 }
 
 void generateBaker() {
-	pid_baker = fork();
-	if(pid_baker == -1) {
+	pid_t pid = fork();
+	if(pid == -1) {
     		std::cerr << "IPC initialization error \n";
+    		std::cout << "d";
     		exit(1);
-    	} else if(pid_baker == 0) {
+    	} else if(pid == 0) {
     		std::cout << "Generating Baker\n";
     		execl("./baker", "baker", NULL);
     		std::cerr << "Baker process could not be created! \n";
     		exit(1);
     	} 
+    	pid_baker = pid;
 }
 
 void generateClient() {
 	pid_t pid = fork();
 	if(pid == -1) {
     		std::cerr << "IPC initialization error \n";
+    		std::cout << "c";
     		exit(1);
     	} else if(pid == 0) {
     		std::cout << "Generating Client\n";
@@ -81,6 +86,38 @@ void* clientGeneratorRoutine(void* arg) {
 	return nullptr;
 }
 
+void generateCashier() {
+	if(pid_cashier1 == -1) {
+		pid_t pid = fork();
+		if(pid == -1) {
+	    		std::cerr << "IPC initialization error \n";
+	    		std::cout << "a";
+	    		exit(1);
+	    	} else if(pid == 0) {
+	    		std::cout << "Generating Cashier 1\n";
+	    		execl("./cashier", "cashier", "1", NULL);
+	    		std::cerr << "Cashier 1 process could not be created! \n";
+	    		exit(1);
+	    	}
+	    	pid_cashier1 = pid;
+	} else if(pid_cashier2 == -1) {
+		pid_t pid = fork();
+		if(pid == -1) {
+			std::cerr << "IPC initialization error \n";
+			std::cout << "b";
+			exit(1);
+		} else if(pid == 0) {
+			std::cout << "Generating Cashier 2\n";
+			execl("./cashier", "cashier", "2", NULL);
+			std::cerr << "Cashier 2 process could not be created! \n";
+			exit(1);
+		}
+	    	pid_cashier2 = pid;
+	} else {
+		std::cerr << "No more cashiers could be created\n";
+	}
+}
+
 void handleSigInt(int sig) {
 	keep_generating = false;
 	pthread_cancel(client_gen_thread);
@@ -95,6 +132,10 @@ void handleSigInt(int sig) {
 	
 	if(pid_baker != -1) 
 		kill(pid_baker, SIGTERM);
+	if (pid_cashier1 != -1) 
+		kill(pid_cashier1, SIGTERM);
+	if (pid_cashier2 != -1) 
+		kill(pid_cashier2, SIGTERM);
 	
 	LOGGER::endLogThread();
 	SHAREDMEMORY::detach();
@@ -130,6 +171,8 @@ int main() {
     	data->is_running = true;
 	
 	generateBaker();
+	generateCashier(); // Cashier 1
+	generateCashier();
 	
 	if(pthread_create(&client_gen_thread, NULL, clientGeneratorRoutine, NULL) != 0) {
 		std::cerr << "Failed to create client generator thread\n";
