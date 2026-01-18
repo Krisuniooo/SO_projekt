@@ -12,6 +12,7 @@
 #include "../include/Config.h"
 
 static pthread_t client_gen_thread;
+static pthread_t cashier_gen_thread;
 std::vector<pid_t> active_pids;
 pthread_mutex_t pid_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool keep_generating = true;
@@ -80,7 +81,7 @@ void generateClient() {
 void* clientGeneratorRoutine(void* arg) {
 	while (keep_generating) {
 		generateClient();
-		sleep(1); 
+		sleep(2); 
 		cleanup_zombies();
 	}
 	return nullptr;
@@ -116,6 +117,29 @@ void generateCashier() {
 	} else {
 		std::cerr << "No more cashiers could be created\n";
 	}
+}
+
+void* cashierGeneratorRoutine(void* arg) {
+	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
+	while (true) {
+		if(pid_cashier2 == -1) {
+			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			int customers_inside = data->current_customers_count;
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			
+			std::cout << customers_inside << "\n";
+			if(customers_inside >= (MAX_CLIENT_INSIDE / 2)) {
+				generateCashier();
+			}
+			
+			sleep(1);
+		} else {
+			waitpid(pid_cashier2, NULL, 0);
+			pid_cashier2 = -1;
+		}
+	}
+	SHAREDMEMORY::detach();
+	return nullptr;
 }
 
 void handleSigInt(int sig) {
@@ -172,7 +196,11 @@ int main() {
 	
 	generateBaker();
 	generateCashier(); // Cashier 1
-	generateCashier();
+	
+	if(pthread_create(&cashier_gen_thread, NULL, cashierGeneratorRoutine, NULL) != 0) {
+		std::cerr << "Failed to create cashier generator thread\n";
+		return 1;
+	}
 	
 	if(pthread_create(&client_gen_thread, NULL, clientGeneratorRoutine, NULL) != 0) {
 		std::cerr << "Failed to create client generator thread\n";

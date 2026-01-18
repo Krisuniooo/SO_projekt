@@ -111,10 +111,26 @@ int main() {
 		}
 
 		if(create_receipt) {
-			LOGGER::log("Client " + getClientPIDstring() + " stands in line to cashier\n");
+			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			bool second_register_active = data->second_register_active;
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			
+			if(second_register_active) {
+				msg.mtype = UTILS::getRandom(1, 2);
+			}
+			
+			LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 			if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 				std::cerr << "could not send shopping list to cashier\n";
 			}
+			
+			
+			ReceiptMessage msg_rcv;
+			std::cout << "\t\t" << getpid() << "\n";
+			if(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0)) {
+				std::cerr << "could recieve shopping list from cashier\n";
+			}
+			LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
 		}
 	}
 	

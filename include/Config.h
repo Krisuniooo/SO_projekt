@@ -23,8 +23,7 @@
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 5 				// N
-#define MAX_CASH_REGISTERS (MAX_CLIENT_INSIDE / 2)	//K
+#define MAX_CLIENT_INSIDE 10 				// N
 #define OPENING_HOUR 8 				// Tp
 #define CLOSING_HOUR 20 				// Tk
 
@@ -32,15 +31,17 @@
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
 
 // Time for baking products
-#define BAKE_MIN_TIME 5.0f
-#define BAKE_MAX_TIME 10.0f
+#define BAKE_MIN_TIME 3.0f
+#define BAKE_MAX_TIME 5.0f
 
 // How many products should be added
-#define BAKE_MIN_PRODUCTS 1
-#define BAKE_MAX_PRODUCTS 3
+#define BAKE_MIN_PRODUCTS 3
+#define BAKE_MAX_PRODUCTS 6
 
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
-#define CUSTOMER_PRODUCT_BUY_TIME 4
+#define CUSTOMER_PRODUCT_BUY_TIME 3
+
+#define CASHIER_PRODUCT_SCAN_TIME 1
 
 #define PRODUCTS 3
 
