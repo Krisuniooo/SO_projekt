@@ -10,6 +10,7 @@
 #include "../include/IPC.h"
 #include "../include/Logger.h"
 #include "../include/Config.h"
+#include "../include/Utils.h"
 
 static pthread_t client_gen_thread;
 static pthread_t cashier_gen_thread;
@@ -81,7 +82,7 @@ void generateClient() {
 void* clientGeneratorRoutine(void* arg) {
 	while (keep_generating) {
 		generateClient();
-		sleep(2); 
+		sleep(UTILS::getRandom(CUSTOMER_SPAWN_MIN_TIME, CUSTOMER_SPAWN_MAX_TIME)); 
 		cleanup_zombies();
 	}
 	return nullptr;

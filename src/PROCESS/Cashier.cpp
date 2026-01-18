@@ -62,16 +62,21 @@ int main(int argc, char *argv[]) {
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
+			// simulate scanning time before mutex
+			for(int i = 0; i< PRODUCTS; i++) {
+				if(my_msg.counts[i] > 0) 
+					usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
+			}
+			
 			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 			
-			int total = 0;
+			float total = 0;
 			
 			file << "\n==================================\n";
 			file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
 			file << "==================================\n";
 			
 			for(int i = 0; i < PRODUCTS; i++) {
-				usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
 				if(my_msg.counts[i] > 0) {
 					file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
 					total += my_msg.counts[i] * Products_base[i].price;
@@ -101,17 +106,22 @@ int main(int argc, char *argv[]) {
 	if(!data->is_evacuation) {
 		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
-				
+						
+			// simulate scanning time before mutex
+			for(int i = 0; i< PRODUCTS; i++) {
+				if(my_msg.counts[i] > 0) 
+					usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
+			}
+			
 			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
-			int total = 0;
+			float total = 0;
 				
 			file << "\n==================================\n";
 			file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
 			file << "==================================\n";
 				
 			for(int i = 0; i < PRODUCTS; i++) {
-				usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
 				if(my_msg.counts[i] > 0) {
 					file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
 					total += my_msg.counts[i] * Products_base[i].price;
@@ -139,6 +149,7 @@ int main(int argc, char *argv[]) {
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	}
 	
+	file.close();
 	SHAREDMEMORY::detach();
 	return 0;
 }

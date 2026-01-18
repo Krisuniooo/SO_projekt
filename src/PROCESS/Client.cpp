@@ -76,13 +76,12 @@ int main() {
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
 	for(auto &i : shopping_list) {
-		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
-		
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 			return 1;
 		}
+		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
 		if(SEMAPHORE::lock(data->trays[i.id_product].sem_num)) {
 			int take = std::min(i.count, data->trays[i.id_product].in_stock);
@@ -127,8 +126,8 @@ int main() {
 			
 			ReceiptMessage msg_rcv;
 			std::cout << "\t\t" << getpid() << "\n";
-			if(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0)) {
-				std::cerr << "could recieve shopping list from cashier\n";
+			while(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), IPC_NOWAIT) == -1) {
+				usleep(10000);
 			}
 			LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
 		}

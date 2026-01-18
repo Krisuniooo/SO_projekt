@@ -39,11 +39,14 @@
 #define BAKE_MAX_PRODUCTS 6
 
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
-#define CUSTOMER_PRODUCT_BUY_TIME 3
+#define CUSTOMER_PRODUCT_BUY_TIME 2.0f
 
-#define CASHIER_PRODUCT_SCAN_TIME 1
+#define CUSTOMER_SPAWN_MIN_TIME 1.0f
+#define CUSTOMER_SPAWN_MAX_TIME 5.0f
 
-#define PRODUCTS 3
+#define CASHIER_PRODUCT_SCAN_TIME 0.2f
+
+#define PRODUCTS 10
 
 struct ProductConfig {
 	std::string label;
@@ -54,7 +57,14 @@ struct ProductConfig {
 const ProductConfig Products_base[PRODUCTS] = {
 	{"WZ-ka", 5.50f, 10},
 	{"Kremowka", 8.50f, 15},
-	{"Piegusek", 2.50f, 20}
+	{"Piegusek", 2.50f, 20},
+	{"Brownie", 10.25f, 18},
+	{"Chocolate Chip", 4.50f, 20},
+	{"Coconut cookie", 3.50f, 20},
+	{"Chocolate Crinkles", 10.50f, 10},
+	{"Amaretti", 6.50f, 20},
+	{"Piernik", 6.75f, 8},
+	{"Dubai Chocolate", 8.25f, 6},
 };
 
 struct Tray {
@@ -91,6 +101,13 @@ enum class SemaphoreTypes {
 	WZ_MUTEX,
 	KREMOWKA_MUTEX,
 	PIEGUSEK_MUTEX,
+	BROWNIE_MUTEX,
+	CHOCCHIP_MUTEX,
+	COCONUT_MUTEX,
+	CHOCCRINKLE_MUTEX,
+	AMARETTI_MUTEX,
+	PIERNIK_MUTEX,
+	DUBAI_MUTEX,
 	PRODUCTS_BASE_END, // do not remove used to track tray ids
 	
 	SEM_COUNT
@@ -110,6 +127,13 @@ const SemaphoreInit SemConfig[] = {
 	{ SemaphoreTypes::WZ_MUTEX, 1 },
 	{ SemaphoreTypes::KREMOWKA_MUTEX, 1 },
 	{ SemaphoreTypes::PIEGUSEK_MUTEX, 1 },
+	{ SemaphoreTypes::BROWNIE_MUTEX, 1 },
+	{ SemaphoreTypes::CHOCCHIP_MUTEX, 1 },
+	{ SemaphoreTypes::COCONUT_MUTEX, 1 },
+	{ SemaphoreTypes::CHOCCRINKLE_MUTEX, 1 },
+	{ SemaphoreTypes::AMARETTI_MUTEX, 1 },
+	{ SemaphoreTypes::PIERNIK_MUTEX, 1 },
+	{ SemaphoreTypes::DUBAI_MUTEX, 1 },
 	{ SemaphoreTypes::PRODUCTS_BASE_END, 1 },
 	{ SemaphoreTypes::SEM_COUNT, 1 }
 };
