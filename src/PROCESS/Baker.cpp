@@ -25,7 +25,7 @@ int main() {
 
 	while(true) {
 		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME) * SIMULATION_MINUTE;
-		usleep(static_cast<int>(time));
+		//usleep(static_cast<int>(1000));
 		
 		if(data->is_evacuation)
 			break;
@@ -33,31 +33,34 @@ int main() {
 		for(int i = 0; i<PRODUCTS; i++) {
 			int amount = UTILS::getRandom(BAKE_MIN_PRODUCTS, BAKE_MAX_PRODUCTS);
 			
+			std::string log_message;
 			if(SEMAPHORE::lock(data->trays[i].sem_num)) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 				
-				if((data->trays[i].in_stock + amount) > Products_base[i].max_stock) {
-					std::string log_message = "Baker: added " + std::to_string(Products_base[i].max_stock - data->trays[i].in_stock) + ", trashed " + std::to_string(data->trays[i].in_stock + amount - Products_base[i].max_stock) +  " " + Products_base[i].label + ", new value: " + std::to_string(data->trays[i].in_stock + amount) + "\n";
+					if((data->trays[i].in_stock + amount) > Products_base[i].max_stock) {
+						//log_message = "Baker: added " + std::to_string(Products_base[i].max_stock - data->trays[i].in_stock) + ", trashed " + std::to_string(data->trays[i].in_stock + amount - Products_base[i].max_stock) +  " " + Products_base[i].label + ", new value: " + std::to_string(data->trays[i].in_stock + amount) + "\n";
+						
+						#if DEBUG_MESSAGES == 1
+							std::cout << log_message;
+						#endif
+										
+						data->trays[i].in_stock = Products_base[i].max_stock;
+						std::cout << data->trays[i].in_stock << "\n";
+					} else {
+						//log_message = "Baker: added " + std::to_string(amount) + " " + Products_base[i].label + ", new value: " + std::to_string(data->trays[i].in_stock + amount) + "\n";
+						
+						#if DEBUG_MESSAGES == 1
+							std::cout << log_message;
+						#endif
+						
+						
+						data->trays[i].in_stock = data->trays[i].in_stock + amount;
+					}
 					
-					#if DEBUG_MESSAGES == 1
-						std::cout << log_message;
-					#endif
-					
-					LOGGER::log(log_message);					
-					data->trays[i].in_stock = Products_base[i].max_stock;
-				} else {
-					std::string log_message = "Baker: added " + std::to_string(amount) + " " + Products_base[i].label + ", new value: " + std::to_string(data->trays[i].in_stock + amount) + "\n";
-					
-					#if DEBUG_MESSAGES == 1
-						std::cout << log_message;
-					#endif
-					
-					LOGGER::log(log_message);
-					data->trays[i].in_stock = data->trays[i].in_stock + amount;
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					SEMAPHORE::unlock(data->trays[i].sem_num);
+					//LOGGER::log(log_message);
 				}
-				
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				SEMAPHORE::unlock(data->trays[i].sem_num);
 			}
 		}
 	}

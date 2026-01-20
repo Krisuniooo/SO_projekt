@@ -61,12 +61,15 @@ int main() {
 		return 0;
 	}
 	
-	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 
-	data->current_customers_count++;
-	data->today_customers_count++;
+		data->current_customers_count++;
+		data->today_customers_count++;
 	
-	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	} else {
+		return 0;
+	}
 	
 	if(!data->is_running || data->is_evacuation) {
 		LOGGER::log("Client " + getClientPIDstring() + " goes away - shop closed\n");
@@ -75,22 +78,25 @@ int main() {
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
+	int index = 0;
 	for(auto &i : shopping_list) {
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 			return 1;
 		}
-		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
+		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
-		if(SEMAPHORE::lock(data->trays[i.id_product].sem_num)) {
+		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1)) {
 			int take = std::min(i.count, data->trays[i.id_product].in_stock);
 			
 			data->trays[i.id_product].in_stock -= take;
 			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(take) + " " + Products_base[i.id_product].label + ", wanted " + std::to_string(i.count) +"\n");
 			i.count = take;
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1);
 		}
-		SEMAPHORE::unlock(data->trays[i.id_product].sem_num);
+		
+		index++;
 	}
 	
 	if (!data->is_evacuation) {

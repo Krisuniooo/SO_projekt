@@ -10,7 +10,7 @@ namespace SEMAPHORE {
 	
 	int getID(int flags = 0600);
 	bool create();
-	bool lock(int sem_num, bool trylock = false);
+	bool lock(int sem_num);
 	bool unlock(int sem_num);
 	void setValue(int sem_num, int value);
 	int getValue(int sem_num);

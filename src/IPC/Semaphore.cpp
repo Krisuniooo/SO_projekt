@@ -69,23 +69,19 @@ int SEMAPHORE::getID(int flags) {
 }
 
 
-bool SEMAPHORE::lock(int sem_num, bool trylock) {
+bool SEMAPHORE::lock(int sem_num) {
 	if(sem_id == -1 && SEMAPHORE::getID() == -1) return false;
 
 	struct sembuf sop;
 	
 	sop.sem_num = sem_num; 
 	sop.sem_op = -1;
-	sop.sem_flg = (trylock ? IPC_NOWAIT : 0) | SEM_UNDO;
+	sop.sem_flg = 0;
 	
 	if(semop(sem_id, &sop, 1) == -1) {
-		if(trylock) {
-			if(errno == EAGAIN) 
-				return false;
-			if(errno != EINTR && errno != EIDRM)
-				std::cerr << "semop Error: " << strerror(errno) << "\n";
+		if(errno == EAGAIN) 
 			return false;
-		} else {
+		if(errno != EINTR && errno != EIDRM) {
 			std::cerr << "semop Error: " << strerror(errno) << "\n";
 			return false;
 		}

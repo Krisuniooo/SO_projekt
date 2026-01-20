@@ -50,15 +50,12 @@ int main(int argc, char *argv[]) {
             		should_close = true;
         	}
 		
-		if(msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) == -1) {
+		if(msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) == -1) {
 			if(data->is_evacuation) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " is forcefullyy closing\n");
 				std::cout << "FORCEFULLY CLOSING REGISTER " << cashier_id << "\n";
 				break;
 			}
-				
-				
-			usleep(10000);
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
@@ -68,49 +65,51 @@ int main(int argc, char *argv[]) {
 					usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
 			}
 			
-			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
 			
-			float total = 0;
-			
-			file << "\n==================================\n";
-			file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
-			file << "==================================\n";
-			
-			for(int i = 0; i < PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) {
-					file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
-					total += my_msg.counts[i] * Products_base[i].price;
+				float total = 0;
+				
+				file << "\n==================================\n";
+				file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
+				file << "==================================\n";
+				
+				for(int i = 0; i < PRODUCTS; i++) {
+					if(my_msg.counts[i] > 0) {
+						file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
+						total += my_msg.counts[i] * Products_base[i].price;
+					}
 				}
-			}
-			file << "==================================\n";
-			file << "TOTAL: " << total << "$\n";
-			file << "==================================\n\n";
-			file.flush();
-			
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
-			
-			my_msg.mtype = my_msg.client;
-			std::cout << "\t" << my_msg.mtype << "\n";
-			if(msgsnd(mq_register_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
-				std::cerr << "could not send shopping list to cashier\n";
-			}
-			
-			if(should_close || data->is_evacuation) {
-				LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
-				std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
-				break;
+				file << "==================================\n";
+				file << "TOTAL: " << total << "$\n";
+				file << "==================================\n\n";
+				file.flush();
+				
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
+				
+				my_msg.mtype = my_msg.client;
+				std::cout << "\t" << my_msg.mtype << "\n";
+				if(msgsnd(mq_register_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+					std::cerr << "could not send shopping list to cashier\n";
+				}
+				
+				if(should_close || data->is_evacuation) {
+					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
+					std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
+					break;
+				}
 			}
 		}
 	}
 	
 	if(!data->is_evacuation) {
-		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
+		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 						
 			// simulate scanning time before mutex
 			for(int i = 0; i< PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) 
-					usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
+				if(my_msg.counts[i] > 0) {
+					//usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
+				}
 			}
 			
 			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
