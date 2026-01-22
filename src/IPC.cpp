@@ -6,6 +6,7 @@ bool IPC::init() {
 	//Log
 	if(!shm_initialized) {
 		std::cout << "\n\tSHAREDMEMORY initialization failed\n";
+		IPC::destroyAll();
 		return false;
 	}
 	
@@ -13,16 +14,23 @@ bool IPC::init() {
 	//Log
 	if(!sem_initialized) {
 		std::cout << "\n\tSEMAPHORE initialization failed\n";
+		IPC::destroyAll();
 		return false;
 	}
 	
 	bool mq_initialized = MESSAGEQUEUE::init();
 	if(!mq_initialized) {
 		std::cout << "\n\tMESSAGEQUEUE initialization failed\n";
+		IPC::destroyAll();
 		return false;
 	}
 	
-	std::cout << "\t\t" << shm_initialized << sem_initialized << mq_initialized << "\n";
+	bool fifo_initialized = FIFO::init();
+	if(!fifo_initialized) {
+		std::cout << "\n\tFIFO initialization failed\n";
+		IPC::destroyAll();
+		return false;
+	}
 	
 	return true;
 }
@@ -33,6 +41,7 @@ bool IPC::destroyAll() {
 	bool c = SEMAPHORE::destroy();
 	bool d = MESSAGEQUEUE::destroyLogger();
 	bool e = MESSAGEQUEUE::destroyRegister();
+	FIFO::remove();
 
 	return (a && b && c && d && e);
 }

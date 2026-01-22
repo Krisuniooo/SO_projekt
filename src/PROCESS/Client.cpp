@@ -9,6 +9,7 @@
 #include "../../include/IPC/MessageQueue.h"
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
+#include "../../include/IPC/Fifo.h"
 
 static void handlerSigOne(int sig) {
 	std::cout << "TEST\n";
@@ -85,16 +86,21 @@ int main() {
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 			return 1;
 		}
-		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
+		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
-		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1)) {
+		int product_size_bytes = PIPE_BUF / Products_base[i.id_product].max_stock;
+		
+		int bytes = FIFO::readData(i.id_product, product_size_bytes * i.count);
+		LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(bytes) + " bytes of " + Products_base[i.id_product].label + "\n");
+		
+		/*if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1)) {
 			int take = std::min(i.count, data->trays[i.id_product].in_stock);
 			
 			data->trays[i.id_product].in_stock -= take;
 			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(take) + " " + Products_base[i.id_product].label + ", wanted " + std::to_string(i.count) +"\n");
 			i.count = take;
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1);
-		}
+		}*/
 		
 		index++;
 	}

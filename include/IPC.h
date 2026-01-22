@@ -4,6 +4,7 @@
 #include "IPC/SharedMemory.h"
 #include "IPC/Semaphore.h"
 #include "IPC/MessageQueue.h"
+#include "IPC/Fifo.h"
 
 namespace IPC {
 	bool init();

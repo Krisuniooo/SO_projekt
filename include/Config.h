@@ -1,8 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#include "Product.h"
 #include <string>
+#include <limits.h>
 
 
 #define SHARED_MEM_KEY_PATH "/tmp/ciastkarnia_shm"
@@ -14,6 +14,8 @@
 #define MESSAGE_QUEUE_KEY_PATH "/tmp/ciastkarnia_mq"
 #define MESSAGE_QUEUE_KEY 'Q'
 #define MESSAGE_QUEUE_REGISTER_KEY 'R'
+
+#define FIFO_PATH "/tmp/ciastkarnia_fifo_"
 
 #define LOGGER_PATH "data/data.log"
 #define LOG_MAX_SIZE 512
@@ -55,16 +57,16 @@ struct ProductConfig {
 };
 
 const ProductConfig Products_base[PRODUCTS] = {
-	{"WZ-ka", 5.50f, 10},
-	{"Kremowka", 8.50f, 15},
-	{"Piegusek", 2.50f, 20},
-	{"Brownie", 10.25f, 18},
-	{"Chocolate Chip", 4.50f, 20},
-	{"Coconut cookie", 3.50f, 20},
-	{"Chocolate Crinkles", 10.50f, 10},
-	{"Amaretti", 6.50f, 20},
+	{"WZ-ka", 5.50f, 2},
+	{"Kremowka", 8.50f, 4},
+	{"Piegusek", 2.50f, 8},
+	{"Brownie", 10.25f, 16},
+	{"Chocolate Chip", 4.50f, 32},
+	{"Coconut cookie", 3.50f, 64},
+	{"Chocolate Crinkles", 10.50f, 128},
+	{"Amaretti", 6.50f, 16},
 	{"Piernik", 6.75f, 8},
-	{"Dubai Chocolate", 8.25f, 6},
+	{"Dubai Chocolate", 8.25f, 4},
 };
 
 struct Tray {

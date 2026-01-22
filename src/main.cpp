@@ -6,6 +6,8 @@
 #include <sys/wait.h>
 #include <signal.h>
 #include <vector>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #include "../include/IPC.h"
 #include "../include/Logger.h"
@@ -20,6 +22,7 @@ static bool keep_generating = true;
 static pid_t pid_baker = -1;
 static pid_t pid_cashier1 = -1;
 static pid_t pid_cashier2 = -1;
+static int trays_read_fd[PRODUCTS];
 
 bool checkConfig() {
 	if((static_cast<int>(SemaphoreTypes::PRODUCTS_BASE_END) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS) {
@@ -48,6 +51,17 @@ void cleanup_zombies() {
 	pthread_mutex_unlock(&pid_mutex);
 }
 
+bool openReadGuardFD() {
+	for(int i=0; i<PRODUCTS; i++) {
+		std::string path = FIFO_PATH + std::to_string(i);
+		int fd = open(path.c_str(), O_RDONLY);
+		if(fd == -1) return false;
+		
+		trays_read_fd[i] = fd;
+	}
+	return true;
+}
+
 void generateBaker() {
 	pid_t pid = fork();
 	if(pid == -1) {
@@ -61,6 +75,7 @@ void generateBaker() {
     		exit(1);
     	} 
     	pid_baker = pid;
+    	openReadGuardFD();
 }
 
 void generateClient() {
@@ -178,16 +193,19 @@ int main() {
 
 	if (!checkConfig()) {
 	    	std::cerr << "Config error \n";
+	    	IPC::destroyAll();
     		return 1;
 	}
 
     	if (!IPC::init()) {
     		std::cerr << "IPC initialization error \n";
+    		IPC::destroyAll();
     		return 1;
     	}
     	
 	if (!LOGGER::init()) {
     		std::cerr << "LOGGER initialization error \n";
+    		IPC::destroyAll();
     		return 1;
     	}
     	LOGGER::log("Initialization successful\n");
