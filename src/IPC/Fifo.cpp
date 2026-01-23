@@ -30,12 +30,8 @@ void FIFO::remove() {
 }
 
 int FIFO::writeData(int id, int size, int k) {
-	std::cout << k << "a" << "\t\t" << id << "\n";
 	std::string path = FIFO_PATH + std::to_string(id);
-	std::cout << k << "b" << "\t\t" << id << "\n";
 	int fd = open(path.c_str(), O_RDWR);
-	std::cout << k << "c" << "\t\t" << id << "\n";
-	std::cout << k << "\t\t" << fd << "\n";
 	if(fd == -1) return -1;
 	char data[size];
 	memset(data, 'v', size);

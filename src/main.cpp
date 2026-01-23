@@ -66,7 +66,6 @@ void generateBaker() {
 	pid_t pid = fork();
 	if(pid == -1) {
     		std::cerr << "IPC initialization error \n";
-    		std::cout << "d";
     		exit(1);
     	} else if(pid == 0) {
     		std::cout << "Generating Baker\n";
@@ -76,13 +75,13 @@ void generateBaker() {
     	} 
     	pid_baker = pid;
     	openReadGuardFD();
+    	std::cout << "OPENED FD\n";
 }
 
 void generateClient() {
 	pid_t pid = fork();
 	if(pid == -1) {
     		std::cerr << "IPC initialization error \n";
-    		std::cout << "c";
     		exit(1);
     	} else if(pid == 0) {
     		std::cout << "Generating Client\n";
@@ -108,7 +107,6 @@ void generateCashier() {
 		pid_t pid = fork();
 		if(pid == -1) {
 	    		std::cerr << "IPC initialization error \n";
-	    		std::cout << "a";
 	    		exit(1);
 	    	} else if(pid == 0) {
 	    		std::cout << "Generating Cashier 1\n";
@@ -121,7 +119,6 @@ void generateCashier() {
 		pid_t pid = fork();
 		if(pid == -1) {
 			std::cerr << "IPC initialization error \n";
-			std::cout << "b";
 			exit(1);
 		} else if(pid == 0) {
 			std::cout << "Generating Cashier 2\n";
@@ -143,7 +140,6 @@ void* cashierGeneratorRoutine(void* arg) {
 			int customers_inside = data->current_customers_count;
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 			
-			std::cout << customers_inside << "\n";
 			if(customers_inside >= (MAX_CLIENT_INSIDE / 2)) {
 				generateCashier();
 			}

@@ -90,7 +90,11 @@ int main() {
 		
 		int product_size_bytes = PIPE_BUF / Products_base[i.id_product].max_stock;
 		
-		int bytes = FIFO::readData(i.id_product, product_size_bytes * i.count);
+		int bytes = 0;
+		for(int j=0; j< i.count; j++) {
+			bytes += FIFO::readData(i.id_product, product_size_bytes);
+		}
+		
 		LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(bytes) + " bytes of " + Products_base[i.id_product].label + "\n");
 		
 		/*if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1)) {
@@ -137,7 +141,7 @@ int main() {
 			
 			
 			ReceiptMessage msg_rcv;
-			std::cout << "\t\t" << getpid() << "\n";
+			//std::cout << "\t\t" << getpid() << "\n";
 			while(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), IPC_NOWAIT) == -1) {
 				usleep(10000);
 			}

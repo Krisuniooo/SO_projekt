@@ -13,6 +13,8 @@
 #include <cmath>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+ #include <fcntl.h>
 
 static int trays_write_fd[PRODUCTS];
 
@@ -22,12 +24,14 @@ static void handlerSigOne(int sig) {
 	return;
 }
 
+// ten nonblock cos monci
 bool openWriteFD() {
 	for(int i=0; i<PRODUCTS; i++) {
 		std::string path = FIFO_PATH + std::to_string(i);
 		int fd = open(path.c_str(), O_WRONLY);
 		if(fd == -1) return false;
 		
+		fcntl(fd, F_SETPIPE_SZ, PIPE_BUF); // RESIZE FIFO TO PIPE_BUF
 		trays_write_fd[i] = fd;
 	}
 	return true;
@@ -41,6 +45,8 @@ int main() {
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
 	
+	sleep(1);
+	
 	if(openWriteFD() == false) {
 		std::cout << "Could not initialize Write file descriptors\n";
 		return 1;
@@ -49,7 +55,7 @@ int main() {
 
 	while(true) {
 		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME) * SIMULATION_MINUTE;
-		usleep(static_cast<int>(time));
+		usleep(static_cast<int>(time/10));
 		
 		if(data->is_evacuation)
 			break;
@@ -57,14 +63,23 @@ int main() {
 		for(int i = 0; i<PRODUCTS; i++) {
 			int amount = UTILS::getRandom(BAKE_MIN_PRODUCTS, BAKE_MAX_PRODUCTS);
 			int product_size_bytes = PIPE_BUF / Products_base[i].max_stock;
-			int size = product_size_bytes * amount;
 			
-			char data[size];
-			memset(data, 'v', size);
+			char data[product_size_bytes];
+			memset(data, 'v', product_size_bytes);
 		
-			ssize_t write_bytes = write(trays_write_fd[i], data, size);
+			int write_bytes = 0;
+			for(int j=0; j<amount; j++) {
+				int sz = 0;
+				ioctl(trays_write_fd[i], FIONREAD, &sz);
+				
+				if(sz+product_size_bytes > fcntl(trays_write_fd[i], F_GETPIPE_SZ)) break;
+				
+				write_bytes += write(trays_write_fd[i], data, product_size_bytes);
+			}
 			
-			std::cout << "\t\t" << write_bytes << "\n";
+			int sz = 0;
+			ioctl(trays_write_fd[i], FIONREAD, &sz);
+			std::cout << i << "\t" << fcntl( trays_write_fd[i], F_GETPIPE_SZ ) << "\t" << write_bytes << "\t" << sz << "\n";
 			
 			if(write_bytes == -1) continue;
 			if(write_bytes < product_size_bytes) continue; // not even one was added
@@ -102,6 +117,8 @@ int main() {
 			}*/
 		}
 	}
+	
+	std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
 	
 	SHAREDMEMORY::detach();
 	for(int i=0; i<PRODUCTS; i++) {

@@ -37,11 +37,11 @@
 #define BAKE_MAX_TIME 5.0f
 
 // How many products should be added
-#define BAKE_MIN_PRODUCTS 3
-#define BAKE_MAX_PRODUCTS 6
+#define BAKE_MIN_PRODUCTS 6
+#define BAKE_MAX_PRODUCTS 10
 
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
-#define CUSTOMER_PRODUCT_BUY_TIME 2.0f
+#define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
 #define CUSTOMER_SPAWN_MIN_TIME 1.0f
 #define CUSTOMER_SPAWN_MAX_TIME 5.0f
@@ -57,16 +57,16 @@ struct ProductConfig {
 };
 
 const ProductConfig Products_base[PRODUCTS] = {
-	{"WZ-ka", 5.50f, 2},
-	{"Kremowka", 8.50f, 4},
-	{"Piegusek", 2.50f, 8},
-	{"Brownie", 10.25f, 16},
+	{"WZ-ka", 5.50f, 32},
+	{"Kremowka", 8.50f, 32},
+	{"Piegusek", 2.50f, 32},
+	{"Brownie", 10.25f, 32},
 	{"Chocolate Chip", 4.50f, 32},
-	{"Coconut cookie", 3.50f, 64},
-	{"Chocolate Crinkles", 10.50f, 128},
-	{"Amaretti", 6.50f, 16},
-	{"Piernik", 6.75f, 8},
-	{"Dubai Chocolate", 8.25f, 4},
+	{"Coconut cookie", 3.50f, 32},
+	{"Chocolate Crinkles", 10.50f, 32},
+	{"Amaretti", 6.50f, 32},
+	{"Piernik", 6.75f, 32},
+	{"Dubai Chocolate", 8.25f, 32},
 };
 
 struct Tray {
