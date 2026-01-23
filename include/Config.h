@@ -57,16 +57,16 @@ struct ProductConfig {
 };
 
 const ProductConfig Products_base[PRODUCTS] = {
-	{"WZ-ka", 5.50f, 32},
-	{"Kremowka", 8.50f, 32},
-	{"Piegusek", 2.50f, 32},
+	{"WZ-ka", 5.50f, 4},
+	{"Kremowka", 8.50f, 64},
+	{"Piegusek", 2.50f, 128},
 	{"Brownie", 10.25f, 32},
-	{"Chocolate Chip", 4.50f, 32},
+	{"Chocolate Chip", 4.50f, 128},
 	{"Coconut cookie", 3.50f, 32},
-	{"Chocolate Crinkles", 10.50f, 32},
-	{"Amaretti", 6.50f, 32},
-	{"Piernik", 6.75f, 32},
-	{"Dubai Chocolate", 8.25f, 32},
+	{"Chocolate Crinkles", 10.50f, 8},
+	{"Amaretti", 6.50f, 8},
+	{"Piernik", 6.75f, 4},
+	{"Dubai Chocolate", 8.25f, 16},
 };
 
 struct Tray {

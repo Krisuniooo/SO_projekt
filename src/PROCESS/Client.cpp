@@ -3,6 +3,8 @@
 #include <signal.h>
 #include <string.h>
 #include <vector>
+#include <fcntl.h>
+#include <sys/stat.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
@@ -10,6 +12,9 @@
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/IPC/Fifo.h"
+
+static int mq_register_id = -1;
+static SharedData* data;
 
 static void handlerSigOne(int sig) {
 	std::cout << "TEST\n";
@@ -46,15 +51,64 @@ std::string getClientPIDstring() {
 	return std::to_string(getpid());
 }
 
+void handleReceipt(std::vector<ShoppingList> shopping_list) {
+	if(mq_register_id == -1) return;
+
+	ReceiptMessage msg;
+	msg.mtype = 1;
+	msg.client = getpid();
+
+	bool create_receipt = false;
+	for(int i=0; i<PRODUCTS; i++) {
+		msg.counts[i] = 0;
+		for(auto &item : shopping_list) {
+			if(item.id_product == i) {
+				msg.counts[i] = item.count;
+				if(item.count > 0) create_receipt = true;
+			}
+		}
+	}
+	
+	if(!create_receipt) return;
+	
+	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	bool second_register_active = data->second_register_active;
+	
+			
+	if(second_register_active) {
+		msg.mtype = UTILS::getRandom(1, 2);
+		
+		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
+		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+			std::cerr << "could not send shopping list to cashier\n";
+		}
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	} else {
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+		
+		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
+		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+			std::cerr << "could not send shopping list to cashier\n";
+		}
+	}
+			
+			
+	ReceiptMessage msg_rcv;
+	while(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0) == -1) {
+		continue;
+	}
+	LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
+}
+
 
 int main() {
 	struct sigaction sa;
 	sa.sa_handler = handlerSigOne;
 	sigaction(SIGUSR2, &sa, NULL);
 	
-	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
-	int semid = SEMAPHORE::getID();
-	int mq_register_id = MESSAGEQUEUE::getRegisterID();
+	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
+	SEMAPHORE::getID();
+	mq_register_id = MESSAGEQUEUE::getRegisterID();
 	
 	std::vector<ShoppingList> shopping_list = generateShoppingList();
 	
@@ -69,6 +123,7 @@ int main() {
 	
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	} else {
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 		return 0;
 	}
 	
@@ -79,74 +134,36 @@ int main() {
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
-	int index = 0;
 	for(auto &i : shopping_list) {
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 			return 1;
 		}
+		
 		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
+		
 		
 		int product_size_bytes = PIPE_BUF / Products_base[i.id_product].max_stock;
 		
+		char data[product_size_bytes];
+		
+		std::string path = FIFO_PATH + std::to_string(i.id_product);
+		int fd = open(path.c_str(), O_RDONLY);
+		if(fd == -1) return -1;
+		
 		int bytes = 0;
 		for(int j=0; j< i.count; j++) {
-			bytes += FIFO::readData(i.id_product, product_size_bytes);
+			bytes += read(fd, data, product_size_bytes);
 		}
+		close(fd);
 		
-		LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(bytes) + " bytes of " + Products_base[i.id_product].label + "\n");
-		
-		/*if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1)) {
-			int take = std::min(i.count, data->trays[i.id_product].in_stock);
-			
-			data->trays[i.id_product].in_stock -= take;
-			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(take) + " " + Products_base[i.id_product].label + ", wanted " + std::to_string(i.count) +"\n");
-			i.count = take;
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + i.id_product + 1);
-		}*/
-		
-		index++;
+		if(bytes > 0)
+			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(bytes) + " bytes of " + Products_base[i.id_product].label + "\n");
 	}
 	
 	if (!data->is_evacuation) {
-		ReceiptMessage msg;
-		msg.mtype = 1;
-		msg.client = getpid();
-
-		bool create_receipt = false;
-		for(int i=0; i<PRODUCTS; i++) {
-			msg.counts[i] = 0;
-			for(auto &item : shopping_list) {
-				if(item.id_product == i) {
-					msg.counts[i] = item.count;
-					if(item.count > 0) create_receipt = true;
-				}
-			}
-		}
-
-		if(create_receipt) {
-			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			bool second_register_active = data->second_register_active;
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			
-			if(second_register_active) {
-				msg.mtype = UTILS::getRandom(1, 2);
-			}
-			
-			LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
-			if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
-				std::cerr << "could not send shopping list to cashier\n";
-			}
-			
-			
-			ReceiptMessage msg_rcv;
-			//std::cout << "\t\t" << getpid() << "\n";
-			while(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), IPC_NOWAIT) == -1) {
-				usleep(10000);
-			}
-			LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
-		}
+		handleReceipt(shopping_list);
 	}
 	
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
