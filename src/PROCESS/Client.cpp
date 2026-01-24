@@ -147,50 +147,26 @@ int main() {
 		
 		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
-		
-		int product_size_bytes = PIPE_BUF / Products_base[i.id_product].max_stock;
-		
-		std::string path = FIFO_PATH + std::to_string(i.id_product);
-		int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
-		if(fd == -1) { 
-			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			data->current_customers_count--;
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
-			LOGGER::log("Client " + getClientPIDstring() + " goes away - ended shopping\n");
-			SHAREDMEMORY::detach();
-			
-			return -1;
-		}
-		
-		char bytedata[product_size_bytes];
-		
-		int bytes = 0;
-		for(int j=0; j< i.count; j++) {
-			//int bytes_available;
-			//if (ioctl(fd, FIONREAD, &bytes_available) == -1) {
-			//    perror("Błąd ioctl");
-			//    break;
-			//}
-			//if(bytes_available >= product_size_bytes) {
-				int newbytes = read(fd, bytedata, product_size_bytes);
+		if(SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i.id_product))) {
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product), true)) {
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+					std::cout << "Took " << Products_base[i.id_product].label << " " << data->trays[i.id_product].buffer[data->trays[i.id_product].head].unique_id << "\n";
 				
-				if (newbytes > 0) {
-					bytes += newbytes;
-					printf("Odebrano: %d\n", (int)bytes);
-				} else if (bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-					printf("Brak danych, sprawdzam ponownie za sekundę...\n");
-					break;
-				} else if (bytes == 0) {
-					printf("Pisarz zakończył pracę.\n");
-					break;
+					data->trays[i.id_product].head = (data->trays[i.id_product].head + 1) % Products_base[i.id_product].max_stock;
+					data->trays[i.id_product].count--;
+				
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i.id_product));
+					//SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
+				} else {
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
 				}
-			//}
+			} else {
+				SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
+			}
 		}
-		close(fd);
-		
-		if(bytes > 0)
-			LOGGER::log("Client " + getClientPIDstring() + " took " + std::to_string(bytes) + " bytes of " + Products_base[i.id_product].label + "\n");
 	}
 	
 	if (!data->is_evacuation) {

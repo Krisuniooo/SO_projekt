@@ -26,7 +26,7 @@ bool SEMAPHORE::init() {
 		return false;
 	}
 	
-	for (int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); ++i) {
+	for (int i = 0; i < static_cast<int>(SemaphoreTypes::SEM_COUNT); i++) {
 		int val = 1;
 		
 		for(auto j : SemConfig) {
@@ -34,8 +34,18 @@ bool SEMAPHORE::init() {
 				val = j.value;
 			}
 		}
-		
 		SEMAPHORE::setValue(i, val);
+		
+	}
+	
+	for(int i = 0; i<PRODUCTS; i++) {
+		SEMAPHORE::setValue(UTILS::SEM_INDEX_MUTEX(i), 1); //mutex
+		SEMAPHORE::setValue(UTILS::SEM_INDEX_SLOTS(i), Products_base[i].max_stock);
+		SEMAPHORE::setValue(UTILS::SEM_INDEX_COUNT(i), Products_base[i].max_stock);
+		
+		for(int j = 0; j<Products_base[i].max_stock; j++) {
+			SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i));
+		}
 	}
 	
 	return true;
@@ -69,17 +79,17 @@ int SEMAPHORE::getID(int flags) {
 }
 
 
-bool SEMAPHORE::lock(int sem_num) {
+bool SEMAPHORE::lock(int sem_num, bool nowait) {
 	if(sem_id == -1 && SEMAPHORE::getID() == -1) return false;
 
 	struct sembuf sop;
 	
 	sop.sem_num = sem_num; 
 	sop.sem_op = -1;
-	sop.sem_flg = 0;
+	sop.sem_flg = nowait ? IPC_NOWAIT : 0;
 	
 	if(semop(sem_id, &sop, 1) == -1) {
-		if(errno == EAGAIN) 
+		if(errno == EAGAIN || (nowait && errno == EWOULDBLOCK)) 
 			return false;
 		if(errno != EINTR && errno != EIDRM) {
 			std::cerr << "semop Error: " << strerror(errno) << "\n";

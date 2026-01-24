@@ -9,6 +9,10 @@ namespace UTILS {
 	int getRandom(int min, int max);
 	float getRandom(float min, float max);
 	double getRandom(double min, double max);
+	
+	int SEM_INDEX_MUTEX(int id);
+	int SEM_INDEX_SLOTS(int id);
+	int SEM_INDEX_COUNT(int id);
 }
 
 #endif

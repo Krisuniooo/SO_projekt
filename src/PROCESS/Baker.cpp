@@ -18,44 +18,52 @@
  #include <stdio.h>
  #include <vector>
 #include <pthread.h>
+#include <ctime>
 
 static int trays_write_fd[PRODUCTS];
 static pthread_t trays_thread_ids[PRODUCTS];
+SharedData* data;
+static int id = 0;
 
 void* bakeProductOnTray(void* arg) {
 	int id_product = *static_cast<int*>(arg);
 	delete static_cast<int*>(arg);
-	
-	std::string path = FIFO_PATH + std::to_string(id_product);
-	int product_size_bytes = PIPE_BUF / Products_base[id_product].max_stock;
-	char data[product_size_bytes];
-	memset(data, 'v', product_size_bytes);
-	
-	signal(SIGPIPE, SIG_IGN);
-	
-	std::cout << "Opening file " << path.c_str() << "\n";
-	int fd = open(path.c_str(), O_WRONLY);
 
 	while(true) {
 	
-		int write_bytes = write(fd, data, product_size_bytes);
-		
-		if(write_bytes > 0) {
-			std::cout << "Zapisano: " << write_bytes << "\n";
-			std::string log_message = "Baker: added " + std::to_string(write_bytes) + " bytes to " + Products_base[id_product].label + ", added " + std::to_string(floor(write_bytes / product_size_bytes)) + " products to conveyor\n";
-			LOGGER::log(log_message);
-		} else {
-			std::cout << "Nie udalo sie zapisac\n";
+		Product newProduct;
+		newProduct.unique_id = id++;
+		std::time_t time_now;
+		time(&time_now);
+		newProduct.baked_time = time_now;
+	
+		if(SEMAPHORE::lock(UTILS::SEM_INDEX_SLOTS(id_product))) {
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(id_product))) {
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {					
+					time(&time_now);
+					newProduct.onsale_time = time_now;
+				
+					data->trays[id_product].buffer[data->trays[id_product].tail] = newProduct;
+					data->trays[id_product].tail = (data->trays[id_product].tail + 1) % Products_base[id_product].max_stock;
+					data->trays[id_product].count++;
+				
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					//SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(id_product));
+					
+				} else {
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+				}
+			} else {
+				SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+			}
 		}
 		
-
-		
-		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME) * SIMULATION_MINUTE;
-		usleep(static_cast<int>(time));
+		//int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
+		//sleep(static_cast<int>(time));
 	}
-	
-	std::cout << "Closing file " << path.c_str() << "\n";
-	close(fd);
 	
 	
 	
@@ -73,7 +81,7 @@ int main() {
 	sa.sa_handler = handlerSigOne;
 	sigaction(SIGUSR2, &sa, NULL);
 	
-	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
+	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
 
 	for(int i=0; i< PRODUCTS; i++) {

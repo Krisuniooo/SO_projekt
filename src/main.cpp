@@ -24,7 +24,7 @@ static pid_t pid_cashier1 = -1;
 static pid_t pid_cashier2 = -1;
 
 bool checkConfig() {
-	if((static_cast<int>(SemaphoreTypes::PRODUCTS_BASE_END) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS) {
+	if((static_cast<int>(SemaphoreTypes::SEM_COUNT) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS*3) {
 		std::cerr << "Config error: N doesnt match semaphore count";
 		return false;
 	}
@@ -170,20 +170,6 @@ void handleSigInt(int sig) {
 	exit(1);
 }
 
-void* fifo_guardian(void* arg) {
-	std::string path = static_cast<const char*>(arg);
-
-	int fd = open(path.c_str(), O_RDONLY);
-
-	if(fd != -1) {
-		while(true) {
-			pause();
-		}
-		close(fd);
-	}
-	return nullptr;
-}
-
 int main() {
 	struct sigaction sa;
 	sa.sa_handler = handleSigInt;
@@ -212,18 +198,6 @@ int main() {
     	data->is_running = true;
 	
 	generateBaker();
-	
-	for (int i = 0; i < PRODUCTS; ++i) {
-	    	std::string path = FIFO_PATH + std::to_string(i);
-	    	pthread_t tid;
-	    	if(pthread_create(&tid, NULL, fifo_guardian, (void*)path->c_str()) != 0) {
-			std::cerr << "Failed to create baker guardian thread\n";
-			return 1;
-		}
-		
-	    	pthread_detach(tid);
-	}
-	
 	generateCashier(); // Cashier 1
 	
 	if(pthread_create(&cashier_gen_thread, NULL, cashierGeneratorRoutine, NULL) != 0) {

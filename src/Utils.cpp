@@ -1,4 +1,5 @@
 #include "../include/Utils.h"
+#include "../include/Config.h"
 
 #include <fstream>
 #include <string>
@@ -50,4 +51,16 @@ double UTILS::getRandom(double min, double max) {
 	std::uniform_real_distribution<double> dist(min, max);
 	
 	return dist(rng);
+}
+
+int UTILS::SEM_INDEX_MUTEX(int id) {
+	return (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + 3 * (id) + 1);
+}
+
+int UTILS::SEM_INDEX_SLOTS(int id) {
+	return (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + 3 * (id) + 2);
+}
+
+int UTILS::SEM_INDEX_COUNT(int id) {
+	return (static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) + 3 * (id) + 3);
 }
