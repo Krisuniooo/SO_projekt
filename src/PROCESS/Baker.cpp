@@ -30,17 +30,33 @@ void* bakeProductOnTray(void* arg) {
 	int product_size_bytes = PIPE_BUF / Products_base[id_product].max_stock;
 	char data[product_size_bytes];
 	memset(data, 'v', product_size_bytes);
+	
+	signal(SIGPIPE, SIG_IGN);
+	
+	std::cout << "Opening file " << path.c_str() << "\n";
+	int fd = open(path.c_str(), O_WRONLY);
 
 	while(true) {
-		std::cout << "Opening file " << path.c_str() << "\n";
-		int fd = open(path.c_str(), O_WRONLY);
+	
 		int write_bytes = write(fd, data, product_size_bytes);
-		close(fd);
 		
-		std::string log_message = "Baker: added " + std::to_string(write_bytes) + " bytes to " + Products_base[id_product].label + ", added " + std::to_string(floor(write_bytes / product_size_bytes)) + " products to conveyor\n";
-		LOGGER::log(log_message);
-		sleep(20);
+		if(write_bytes > 0) {
+			std::cout << "Zapisano: " << write_bytes << "\n";
+			std::string log_message = "Baker: added " + std::to_string(write_bytes) + " bytes to " + Products_base[id_product].label + ", added " + std::to_string(floor(write_bytes / product_size_bytes)) + " products to conveyor\n";
+			LOGGER::log(log_message);
+		} else {
+			std::cout << "Nie udalo sie zapisac\n";
+		}
+		
+
+		
+		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME) * SIMULATION_MINUTE;
+		usleep(static_cast<int>(time));
 	}
+	
+	std::cout << "Closing file " << path.c_str() << "\n";
+	close(fd);
+	
 	
 	
 	return nullptr;
@@ -51,19 +67,6 @@ static void handlerSigOne(int sig) {
 	
 	return;
 }
-
-/*
-bool openWriteFD() {
-	for(int i=0; i<PRODUCTS; i++) {
-		std::string path = FIFO_PATH + std::to_string(i);
-		int fd = open(path.c_str(), O_WRONLY);
-		if(fd == -1) return false;
-		
-		fcntl(fd, F_SETPIPE_SZ, PIPE_BUF); // RESIZE FIFO TO PIPE_BUF
-		trays_write_fd[i] = fd;
-	}
-	return true;
-}*/
 
 int main() {
 	struct sigaction sa;

@@ -166,6 +166,22 @@ void handleSigInt(int sig) {
 	if(!destroy_success) {
 		std::cerr << "could not destroy IPC\n";
 	}
+	
+	exit(1);
+}
+
+void* fifo_guardian(void* arg) {
+	std::string path = static_cast<const char*>(arg);
+
+	int fd = open(path.c_str(), O_RDONLY);
+
+	if(fd != -1) {
+		while(true) {
+			pause();
+		}
+		close(fd);
+	}
+	return nullptr;
 }
 
 int main() {
@@ -196,6 +212,18 @@ int main() {
     	data->is_running = true;
 	
 	generateBaker();
+	
+	for (int i = 0; i < PRODUCTS; ++i) {
+	    	std::string path = FIFO_PATH + std::to_string(i);
+	    	pthread_t tid;
+	    	if(pthread_create(&tid, NULL, fifo_guardian, (void*)path->c_str()) != 0) {
+			std::cerr << "Failed to create baker guardian thread\n";
+			return 1;
+		}
+		
+	    	pthread_detach(tid);
+	}
+	
 	generateCashier(); // Cashier 1
 	
 	if(pthread_create(&cashier_gen_thread, NULL, cashierGeneratorRoutine, NULL) != 0) {

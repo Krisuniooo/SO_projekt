@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
 				my_msg.mtype = my_msg.client;
-				std::cout << "\t" << my_msg.mtype << "\n";
 				if(msgsnd(mq_register_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 					std::cerr << "could not send shopping list to cashier\n";
 				}

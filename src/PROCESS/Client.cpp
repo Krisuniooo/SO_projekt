@@ -13,6 +13,9 @@
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/IPC/Fifo.h"
 
+#include <sys/ioctl.h>
+#include <poll.h>
+
 static int mq_register_id = -1;
 static SharedData* data;
 
@@ -134,6 +137,7 @@ int main() {
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
+	
 	for(auto &i : shopping_list) {
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
@@ -141,20 +145,47 @@ int main() {
 			return 1;
 		}
 		
-		usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
+		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
 		
 		int product_size_bytes = PIPE_BUF / Products_base[i.id_product].max_stock;
 		
-		char data[product_size_bytes];
-		
 		std::string path = FIFO_PATH + std::to_string(i.id_product);
-		int fd = open(path.c_str(), O_RDONLY);
-		if(fd == -1) return -1;
+		int fd = open(path.c_str(), O_RDONLY | O_NONBLOCK);
+		if(fd == -1) { 
+			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			data->current_customers_count--;
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
+			LOGGER::log("Client " + getClientPIDstring() + " goes away - ended shopping\n");
+			SHAREDMEMORY::detach();
+			
+			return -1;
+		}
+		
+		char bytedata[product_size_bytes];
 		
 		int bytes = 0;
 		for(int j=0; j< i.count; j++) {
-			bytes += read(fd, data, product_size_bytes);
+			//int bytes_available;
+			//if (ioctl(fd, FIONREAD, &bytes_available) == -1) {
+			//    perror("Błąd ioctl");
+			//    break;
+			//}
+			//if(bytes_available >= product_size_bytes) {
+				int newbytes = read(fd, bytedata, product_size_bytes);
+				
+				if (newbytes > 0) {
+					bytes += newbytes;
+					printf("Odebrano: %d\n", (int)bytes);
+				} else if (bytes == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
+					printf("Brak danych, sprawdzam ponownie za sekundę...\n");
+					break;
+				} else if (bytes == 0) {
+					printf("Pisarz zakończył pracę.\n");
+					break;
+				}
+			//}
 		}
 		close(fd);
 		
