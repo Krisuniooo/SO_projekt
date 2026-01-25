@@ -32,32 +32,36 @@ void* bakeProductOnTray(void* arg) {
 	while(true) {
 	
 		Product newProduct;
-		newProduct.unique_id = id++;
 		std::time_t time_now;
 		time(&time_now);
 		newProduct.baked_time = time_now;
+		int product_count = UTILS::getRandom(BAKE_MIN_PRODUCTS, BAKE_MAX_PRODUCTS);
 	
-		if(SEMAPHORE::lock(UTILS::SEM_INDEX_SLOTS(id_product))) {
-			if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(id_product))) {
-				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {					
-					time(&time_now);
-					newProduct.onsale_time = time_now;
-				
-					data->trays[id_product].buffer[data->trays[id_product].tail] = newProduct;
-					data->trays[id_product].tail = (data->trays[id_product].tail + 1) % Products_base[id_product].max_stock;
-					data->trays[id_product].count++;
-				
-					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-					//SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(id_product));
+		for(int i=0; i<product_count; i++) {
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_SLOTS(id_product))) {
+				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(id_product))) {
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {					newProduct.unique_id = id++;
+						time(&time_now);
+						newProduct.onsale_time = time_now;
 					
+						data->trays[id_product].buffer[data->trays[id_product].tail] = newProduct;
+						data->trays[id_product].tail = (data->trays[id_product].tail + 1) % Products_base[id_product].max_stock;
+						data->trays[id_product].count++;
+					
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+						//SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(id_product));
+						
+						std::cout << "Added " << Products_base[id_product].label << " new value: " << SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)) << "\n";
+						
+					} else {
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+					}
 				} else {
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
 					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
 				}
-			} else {
-				SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
 			}
 		}
 		

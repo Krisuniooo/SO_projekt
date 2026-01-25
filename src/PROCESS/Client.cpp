@@ -3,7 +3,6 @@
 #include <signal.h>
 #include <string.h>
 #include <vector>
-#include <fcntl.h>
 #include <sys/stat.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
@@ -13,8 +12,7 @@
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/IPC/Fifo.h"
 
-#include <sys/ioctl.h>
-#include <poll.h>
+#include <map>
 
 static int mq_register_id = -1;
 static SharedData* data;
@@ -54,7 +52,7 @@ std::string getClientPIDstring() {
 	return std::to_string(getpid());
 }
 
-void handleReceipt(std::vector<ShoppingList> shopping_list) {
+void handleReceipt(std::map<int, int> shopping_list) {
 	if(mq_register_id == -1) return;
 
 	ReceiptMessage msg;
@@ -62,14 +60,14 @@ void handleReceipt(std::vector<ShoppingList> shopping_list) {
 	msg.client = getpid();
 
 	bool create_receipt = false;
+	
 	for(int i=0; i<PRODUCTS; i++) {
 		msg.counts[i] = 0;
-		for(auto &item : shopping_list) {
-			if(item.id_product == i) {
-				msg.counts[i] = item.count;
-				if(item.count > 0) create_receipt = true;
-			}
-		}
+	}
+	
+	for(auto i : shopping_list) {
+		msg.counts[i.first] = i.second;
+		create_receipt = true;
 	}
 	
 	if(!create_receipt) return;
@@ -113,7 +111,7 @@ int main() {
 	SEMAPHORE::getID();
 	mq_register_id = MESSAGEQUEUE::getRegisterID();
 	
-	std::vector<ShoppingList> shopping_list = generateShoppingList();
+	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
 	
 	if (!SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE))) {
 		return 0;
@@ -137,8 +135,9 @@ int main() {
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
-	
-	for(auto &i : shopping_list) {
+	// id: count
+	std::map<int, int> shopping_list_acquired;
+	for(auto &i : shopping_list_demand) {
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
@@ -147,30 +146,35 @@ int main() {
 		
 		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
-		if(SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i.id_product))) {
-			if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product), true)) {
-				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-					std::cout << "Took " << Products_base[i.id_product].label << " " << data->trays[i.id_product].buffer[data->trays[i.id_product].head].unique_id << "\n";
-				
-					data->trays[i.id_product].head = (data->trays[i.id_product].head + 1) % Products_base[i.id_product].max_stock;
-					data->trays[i.id_product].count--;
-				
-					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i.id_product));
-					//SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
+		for(int j = 0; j<i.count; j++) {
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i.id_product))) {
+				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product), true)) {
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+						std::cout << "Took " << Products_base[i.id_product].label << " id: " << data->trays[i.id_product].buffer[data->trays[i.id_product].head].unique_id << "\n";
+					
+						data->trays[i.id_product].head = (data->trays[i.id_product].head + 1) % Products_base[i.id_product].max_stock;
+						data->trays[i.id_product].count--;
+					
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i.id_product));
+						
+						shopping_list_acquired[i.id_product]++;
+					} else {
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
+					}
 				} else {
 					SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
-					SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i.id_product));
+					break;
 				}
-			} else {
-				SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
 			}
 		}
 	}
 	
 	if (!data->is_evacuation) {
-		handleReceipt(shopping_list);
+		//TO CHANGE
+		handleReceipt(shopping_list_acquired);
 	}
 	
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
