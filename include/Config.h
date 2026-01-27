@@ -4,7 +4,6 @@
 #include <string>
 #include <limits.h>
 
-
 #define SHARED_MEM_KEY_PATH "/tmp/ciastkarnia_shm"
 #define SHARED_MEM_KEY 'M'
 
@@ -22,6 +21,8 @@
 
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_LINE_SIZE 512
+
+#define MAX_PROCESSES 1000
 
 #define DEBUG_MESSAGES 0
 
@@ -102,6 +103,8 @@ enum class SemaphoreTypes {
 	SHARED_DATA_MUTEX,
 	CLIENTS_INSIDE,
 	RECEIPT_MUTEX,
+	PROCESSES_MAX,
+	LOGGER_MUTEX,
 	
 	PRODUCTS_BASE, // do not remove used to track tray ids
 	WZ_MUTEX,
@@ -147,6 +150,8 @@ const SemaphoreInit SemConfig[] = {
 	{ SemaphoreTypes::SHARED_DATA_MUTEX, 1 },
 	{ SemaphoreTypes::CLIENTS_INSIDE, MAX_CLIENT_INSIDE },
 	{ SemaphoreTypes::RECEIPT_MUTEX, 1 },
+	{ SemaphoreTypes::RECEIPT_MUTEX, MAX_PROCESSES },
+	{ SemaphoreTypes::LOGGER_MUTEX, 1 },
 };
 
 struct LogMessage {

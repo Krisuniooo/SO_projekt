@@ -22,6 +22,7 @@ static bool keep_generating = true;
 static pid_t pid_baker = -1;
 static pid_t pid_cashier1 = -1;
 static pid_t pid_cashier2 = -1;
+static SharedData* data;
 
 bool checkConfig() {
 	if((static_cast<int>(SemaphoreTypes::SEM_COUNT) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS*3) {
@@ -140,7 +141,7 @@ void* cashierGeneratorRoutine(void* arg) {
 	return nullptr;
 }
 
-void handleSigInt(int sig) {
+void handleKillSignals(int sig) {
 	keep_generating = false;
 	pthread_cancel(client_gen_thread);
 	
@@ -159,7 +160,6 @@ void handleSigInt(int sig) {
 	if (pid_cashier2 != -1) 
 		kill(pid_cashier2, SIGTERM);
 	
-	LOGGER::endLogThread();
 	SHAREDMEMORY::detach();
 	
 	bool destroy_success = IPC::destroyAll();
@@ -170,14 +170,12 @@ void handleSigInt(int sig) {
 	exit(1);
 }
 
-int main() {
-	struct sigaction sa;
-	sa.sa_handler = handleSigInt;
-	sigaction(SIGINT, &sa, NULL);
+void handleStocktaking(int sig) { }
+void handleEvacuation(int sig) { }
 
+int main() {
 	if (!checkConfig()) {
 	    	std::cerr << "Config error \n";
-	    	IPC::destroyAll();
     		return 1;
 	}
 
@@ -194,7 +192,14 @@ int main() {
     	}
     	LOGGER::log("Initialization successful\n");
     	
-    	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
+    	signal(SIGCHLD, SIG_IGN);
+    	signal(SIGINT, handleKillSignals);
+    	signal(SIGTERM, handleKillSignals);
+    	
+    	signal(SIGUSR1, handleStocktaking);
+    	signal(SIGUSR2, handleEvacuation);
+    	
+    	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
     	data->is_running = true;
 	
 	generateBaker();
@@ -212,7 +217,6 @@ int main() {
 	
 	while (wait(NULL) > 0);
 	
-	LOGGER::endLogThread();
 	SHAREDMEMORY::detach();
 	
 	bool destroy_success = IPC::destroyAll();
