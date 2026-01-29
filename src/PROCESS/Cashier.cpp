@@ -11,20 +11,8 @@
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
 
-bool should_close = false;
-
-static void handlerSigOne(int sig) {
-	std::cout << "TEST\n";
-	
-	return;
-}
-
 int main(int argc, char *argv[]) {
 	int cashier_id = std::stoi(argv[1]);
-
-	struct sigaction sa;
-	sa.sa_handler = handlerSigOne;
-	sigaction(SIGUSR2, &sa, NULL);
 	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
@@ -38,16 +26,19 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	if(cashier_id > 1) {
-		SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-		data->second_register_active = true;
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-	}
-	std::cout << "CASHIER " << cashier_id << " STARTS RUNNING! :) \n";
-	
-	while(true) {
-		if (cashier_id > 1 && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
-            		should_close = true;
+	while(data->is_open) {
+		if (cashier_id > 1) {
+			if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
+				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				data->second_register_active = false;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
+				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				data->second_register_active = true;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				std::cout << "SECOND REGISTER STARTS RUNNING\n";
+			}
+
         	}
 		
 		if(msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) == -1) {
@@ -75,6 +66,11 @@ int main(int argc, char *argv[]) {
 				
 				for(int i = 0; i < PRODUCTS; i++) {
 					if(my_msg.counts[i] > 0) {
+					
+						SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+						data->total_sold[i]++;
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					
 						file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
 						total += my_msg.counts[i] * Products_base[i].price;
 					}
@@ -91,7 +87,7 @@ int main(int argc, char *argv[]) {
 					std::cerr << "could not send shopping list to cashier\n";
 				}
 				
-				if(should_close || data->is_evacuation) {
+				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
 					std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
 					break;
@@ -121,6 +117,11 @@ int main(int argc, char *argv[]) {
 				
 			for(int i = 0; i < PRODUCTS; i++) {
 				if(my_msg.counts[i] > 0) {
+				
+					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					data->total_sold[i]++;
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				
 					file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
 					total += my_msg.counts[i] * Products_base[i].price;
 				}

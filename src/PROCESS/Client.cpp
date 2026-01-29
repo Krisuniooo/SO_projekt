@@ -73,10 +73,8 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	if(!create_receipt) return;
 	
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-	bool second_register_active = data->second_register_active;
-	
 			
-	if(second_register_active) {
+	if(data->second_register_active) {
 		msg.mtype = UTILS::getRandom(1, 2);
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
@@ -113,7 +111,22 @@ int main() {
 	
 	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
 	
+	if(!data->is_open || data->is_evacuation) {
+		LOGGER::log("Client " + getClientPIDstring() + " goes away - shop closed\n");
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
+		return 0;
+	}
+	
 	if (!SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE))) {
+		LOGGER::log("Client " + getClientPIDstring() + " could not enter shop - semaphore error\n");
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
+		return 0;
+	}
+	
+	if(!data->is_open || data->is_evacuation) {
+		LOGGER::log("Client " + getClientPIDstring() + " goes away - shop closed\n");
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
 		return 0;
 	}
 	
@@ -125,17 +138,23 @@ int main() {
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	} else {
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
+		LOGGER::log("Client " + getClientPIDstring() + " could not enter shop - semaphore error\n");
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
 		return 0;
 	}
 	
-	if(!data->is_running || data->is_evacuation) {
-		LOGGER::log("Client " + getClientPIDstring() + " goes away - shop closed\n");
+	if(data->is_evacuation) {
+		LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation ongoing\n");
+		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+			data->current_customers_count--;
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+		}
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
 		return 0;
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " enters shop\n");
 	
-	// id: count
 	std::map<int, int> shopping_list_acquired;
 	for(auto &i : shopping_list_demand) {
 		if(data->is_evacuation) {
@@ -184,5 +203,6 @@ int main() {
 	LOGGER::log("Client " + getClientPIDstring() + " goes away - ended shopping\n");
 	SHAREDMEMORY::detach();
 
+	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
 	return 0;
 }

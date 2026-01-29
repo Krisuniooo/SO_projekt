@@ -20,33 +20,59 @@
 #include <pthread.h>
 #include <ctime>
 
-static int trays_write_fd[PRODUCTS];
 static pthread_t trays_thread_ids[PRODUCTS];
-SharedData* data;
-static int id = 0;
+static SharedData* data;
+static int baked_product_id = 0;
+static bool sigterm_handle = false;
+
 
 void* bakeProductOnTray(void* arg) {
 	int id_product = *static_cast<int*>(arg);
 	delete static_cast<int*>(arg);
 
-	while(true) {
-	
+	while(data->is_running) {
 		Product newProduct;
 		std::time_t time_now;
 		time(&time_now);
 		newProduct.baked_time = time_now;
 		int product_count = UTILS::getRandom(BAKE_MIN_PRODUCTS, BAKE_MAX_PRODUCTS);
+		
+		if(!data->is_running || data->is_evacuation) break;
 	
 		for(int i=0; i<product_count; i++) {
 			if(SEMAPHORE::lock(UTILS::SEM_INDEX_SLOTS(id_product))) {
+				
+				if(!data->is_running || data->is_evacuation) {
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+					break;
+				}
+			
 				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(id_product))) {
-					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {					newProduct.unique_id = id++;
+				
+					if(!data->is_running || data->is_evacuation) {
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+						SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+						break;
+					}
+					
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+					
+						if(!data->is_running || data->is_evacuation) {
+							SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+							SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
+							SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
+							break;
+						}
+					
+						newProduct.unique_id = baked_product_id++;
+						std::cout << "\t\t" << newProduct.unique_id << "\n";
 						time(&time_now);
 						newProduct.onsale_time = time_now;
 					
 						data->trays[id_product].buffer[data->trays[id_product].tail] = newProduct;
 						data->trays[id_product].tail = (data->trays[id_product].tail + 1) % Products_base[id_product].max_stock;
 						data->trays[id_product].count++;
+						data->total_produced[id_product]++;
 					
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 						//SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
@@ -65,25 +91,22 @@ void* bakeProductOnTray(void* arg) {
 			}
 		}
 		
-		//int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
-		//sleep(static_cast<int>(time));
+		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
+		for (int i = 0; i < 100; ++i) {
+    			if (!data->is_running || data->is_evacuation) break;
+			usleep((time/100.0) * SIMULATION_MINUTE);
+		}
 	}
-	
-	
 	
 	return nullptr;
 }
 
-static void handlerSigOne(int sig) {
-	std::cout << "TEST\n";
-	
-	return;
+void handlerSigTerm(int sig) {
+	sigterm_handle = true;
 }
 
 int main() {
-	struct sigaction sa;
-	sa.sa_handler = handlerSigOne;
-	sigaction(SIGUSR2, &sa, NULL);
+	signal(SIGTERM, handlerSigTerm);
 	
 	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
@@ -95,19 +118,21 @@ int main() {
 		trays_thread_ids[i] = tid;
 	}
 
-	while(true) {
-		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME) * SIMULATION_MINUTE;
-		usleep(static_cast<int>(time/10));
-		
+	while(data->is_running) {
+		sleep(1);	
 		if(data->is_evacuation)
+			break;
+		
+		if(sigterm_handle) 
 			break;
 	}
 	
+	for(int i=0; i< PRODUCTS; i++) {
+		pthread_join(trays_thread_ids[i], nullptr);
+		trays_thread_ids[i] = -1;
+	}
 	
 	SHAREDMEMORY::detach();
-	for(int i=0; i<PRODUCTS; i++) {
-		close(trays_write_fd[i]);
-	}
 	
 	return 0;
 }

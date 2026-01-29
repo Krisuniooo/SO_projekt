@@ -16,26 +16,28 @@
 
 #define FIFO_PATH "/tmp/ciastkarnia_fifo_"
 
+#define MANAGER_RAPORT_PATH "data/raport.log"
 #define LOGGER_PATH "data/data.log"
 #define LOG_MAX_SIZE 512
 
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_LINE_SIZE 512
 
-#define MAX_PROCESSES 1000
+#define MAX_PROCESSES 3000
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 10 				// N
-#define OPENING_HOUR 8 				// Tp
-#define CLOSING_HOUR 20 				// Tk
+#define MAX_CLIENT_INSIDE 500 				// N
+#define OPENING_TIME 10 				// Tp
+#define CLOSING_TIME 62 				// Tk
+#define TOTAL_TIME 80
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
 
 // Time for baking products
-#define BAKE_MIN_TIME 3.2f
-#define BAKE_MAX_TIME 3.3f
+#define BAKE_MIN_TIME 23.2f
+#define BAKE_MAX_TIME 23.3f
 
 // How many products should be added
 #define BAKE_MIN_PRODUCTS 65
@@ -44,10 +46,10 @@
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
 #define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
-#define CUSTOMER_SPAWN_MIN_TIME 0.5f
-#define CUSTOMER_SPAWN_MAX_TIME 0.75f
+#define CUSTOMER_SPAWN_MIN_TIME 0.005f
+#define CUSTOMER_SPAWN_MAX_TIME 0.0075f
 
-#define CASHIER_PRODUCT_SCAN_TIME 0.02f
+#define CASHIER_PRODUCT_SCAN_TIME 3.02f
 
 #define PRODUCTS 10
 #define MAX_STOCK 256
@@ -59,16 +61,16 @@ struct ProductConfig {
 };
 
 const ProductConfig Products_base[PRODUCTS] = {
-	{"WZ-ka", 5.50f, 4},
-	{"Kremowka", 8.50f, 5},
-	{"Piegusek", 2.50f, 6},
-	{"Brownie", 10.25f, 7},
-	{"Chocolate Chip", 4.50f, 8},
-	{"Coconut cookie", 3.50f, 9},
-	{"Chocolate Crinkles", 10.50f, 8},
-	{"Amaretti", 6.50f, 12},
-	{"Piernik", 6.75f, 4},
-	{"Dubai Chocolate", 8.25f, 5},
+	{"WZ-ka", 5.50f, 84},
+	{"Kremowka", 8.50f, 75},
+	{"Piegusek", 2.50f, 66},
+	{"Brownie", 10.25f, 87},
+	{"Chocolate Chip", 4.50f, 58},
+	{"Coconut cookie", 3.50f, 91},
+	{"Chocolate Crinkles", 10.50f, 84},
+	{"Amaretti", 6.50f, 121},
+	{"Piernik", 6.75f, 84},
+	{"Dubai Chocolate", 8.25f, 55},
 };
 
 struct Product {
@@ -95,6 +97,9 @@ struct SharedData {
 	int today_customers_count;
 	
 	Tray trays[PRODUCTS];
+	int total_produced[PRODUCTS];
+	int total_sold[PRODUCTS];
+	int total_trashed[PRODUCTS];
 	
 	bool second_register_active;
 };
@@ -150,7 +155,7 @@ const SemaphoreInit SemConfig[] = {
 	{ SemaphoreTypes::SHARED_DATA_MUTEX, 1 },
 	{ SemaphoreTypes::CLIENTS_INSIDE, MAX_CLIENT_INSIDE },
 	{ SemaphoreTypes::RECEIPT_MUTEX, 1 },
-	{ SemaphoreTypes::RECEIPT_MUTEX, MAX_PROCESSES },
+	{ SemaphoreTypes::PROCESSES_MAX, MAX_PROCESSES },
 	{ SemaphoreTypes::LOGGER_MUTEX, 1 },
 };
 

@@ -49,6 +49,7 @@ bool SHAREDMEMORY::init() {
 		newTray.count = 0;
 		
 		data->trays[i] = newTray;
+		data->total_produced[i] = 0;
 	}
 	
 	return true;
