@@ -39,7 +39,7 @@ bool IPC::destroyAll() {
 	bool a = SHAREDMEMORY::detach();
 	bool b = SHAREDMEMORY::destroy();
 	bool c = SEMAPHORE::destroy();
-	bool d = MESSAGEQUEUE::destroyLogger();
+	bool d = MESSAGEQUEUE::destroyClientMQ();
 	bool e = MESSAGEQUEUE::destroyRegister();
 	FIFO::remove();
 

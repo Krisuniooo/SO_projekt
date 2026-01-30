@@ -8,10 +8,10 @@
 namespace MESSAGEQUEUE {
 	bool init();
 	
-	bool createLoggerMQ();
-	int getLoggerID(int flags = 0600);
+	bool createClientMQ();
+	int getClientMQID(int flags = 0600);
 	
-	bool destroyLogger();
+	bool destroyClientMQ();
 	
 	bool createRegisterMQ();
 	int getRegisterID(int flags = 0600);

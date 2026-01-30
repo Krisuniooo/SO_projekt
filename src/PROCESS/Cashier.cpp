@@ -7,6 +7,7 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
+#include "../../include/Signals.h"
 #include "../../include/IPC/MessageQueue.h"
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
@@ -17,6 +18,7 @@ int main(int argc, char *argv[]) {
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	int semid = SEMAPHORE::getID();
 	int mq_register_id = MESSAGEQUEUE::getRegisterID();
+	int mq_client_id = MESSAGEQUEUE::getClientMQID();
 	
 	ReceiptMessage my_msg;
 	
@@ -52,8 +54,8 @@ int main(int argc, char *argv[]) {
 			
 			// simulate scanning time before mutex
 			for(int i = 0; i< PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) 
-					usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
+				if(my_msg.counts[i] > 0) {}
+					//usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
 			}
 			
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
@@ -83,9 +85,11 @@ int main(int argc, char *argv[]) {
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
 				my_msg.mtype = my_msg.client;
-				if(msgsnd(mq_register_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 					std::cerr << "could not send shopping list to cashier\n";
 				}
+				std::cout << "Kasjer wysyła do: " << my_msg.client << std::endl;
+				SIGNALS::send(my_msg.client, SIGRTMIN + 1);
 				
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
@@ -135,9 +139,10 @@ int main(int argc, char *argv[]) {
 			
 			my_msg.mtype = my_msg.client;
 			std::cout << "\t" << my_msg.mtype << "\n";
-			if(msgsnd(mq_register_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+			if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 				std::cerr << "could not send shopping list to cashier\n";
 			}
+			SIGNALS::send(my_msg.client, SIGRTMIN + 1);
 		}
 	}
 	

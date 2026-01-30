@@ -41,11 +41,7 @@ bool SEMAPHORE::init() {
 	for(int i = 0; i<PRODUCTS; i++) {
 		SEMAPHORE::setValue(UTILS::SEM_INDEX_MUTEX(i), 1); //mutex
 		SEMAPHORE::setValue(UTILS::SEM_INDEX_SLOTS(i), Products_base[i].max_stock);
-		SEMAPHORE::setValue(UTILS::SEM_INDEX_COUNT(i), Products_base[i].max_stock);
-		
-		for(int j = 0; j<Products_base[i].max_stock; j++) {
-			SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i));
-		}
+		SEMAPHORE::setValue(UTILS::SEM_INDEX_COUNT(i), 0);
 	}
 	
 	return true;

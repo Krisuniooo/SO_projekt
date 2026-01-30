@@ -13,6 +13,7 @@
 #include "../include/Logger.h"
 #include "../include/Config.h"
 #include "../include/Utils.h"
+#include "../include/Signals.h"
 
 static pthread_t client_gen_thread;
 static pthread_t cashier_gen_thread;
@@ -214,9 +215,12 @@ void handleKillSignals(int sig) {
 	if(main_pid != getpid()) {
 		exit(0);
 	}
+	
+	std::cout << "TRYING TO KILL\n";
 
 	stop_program = 1;
 	keep_generating = false;
+	std::cout << "CHANGED FLAGS\n";
 }
 
 void handleStocktaking(int sig) {
@@ -239,11 +243,15 @@ void resetTrays() {
 	for(int i = 0; i<PRODUCTS; i++) {
 		int max_capacity = Products_base[i].max_stock;
 	
-		if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i))) {
-			int current_in_stock = data->trays[i].count;
-			SEMAPHORE::setValue(UTILS::SEM_INDEX_SLOTS(i), current_in_stock);
-			SEMAPHORE::setValue(UTILS::SEM_INDEX_COUNT(i), max_capacity - current_in_stock);
-			SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i));
+		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i))) {
+				int current_in_stock = data->trays[i].count;
+				std::cout << current_in_stock << " " << (max_capacity - current_in_stock) << "\n";
+				SEMAPHORE::setValue(UTILS::SEM_INDEX_SLOTS(i), max_capacity - current_in_stock);
+				SEMAPHORE::setValue(UTILS::SEM_INDEX_COUNT(i), current_in_stock);
+				SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(i));
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			}
 		}
 	}
 }
@@ -269,6 +277,7 @@ int main() {
     	}
     	LOGGER::log("Initialization successful\n");
     	
+    	SIGNALS::init(SIGRTMIN + 2);
     	signal(SIGCHLD, SIG_IGN);
     	signal(SIGINT, handleKillSignals);
     	signal(SIGTERM, handleKillSignals);
@@ -303,12 +312,13 @@ int main() {
 	while(!stop_program) {
 		if(!checkOpen() && data->is_open) {
 			data->is_open = false;
+			std::cout << "A\n";
 			
-			while(true) {
-				if(data->current_customers_count <=0) break;
-				usleep(10000);
+			if(data->current_customers_count <=0) {
+				SIGNALS::wait(SIGRTMIN + 2);
 			}
 			
+			std::cout << "B\n";
 			data->is_running = false;
 			
 			for(int i=0; i<PRODUCTS; i++) {
@@ -317,6 +327,8 @@ int main() {
 			
 			terminateBaker();
 			terminateCashiers();
+			
+			std::cout << "C\n";
 			
 			resetTrays(); // reset broken semaphores from last for loop
 		}
@@ -340,6 +352,7 @@ int main() {
 			generateCashier();
 		}
 		sleep(1);
+		
 	}
 	
 	signal(SIGTERM, SIG_IGN);

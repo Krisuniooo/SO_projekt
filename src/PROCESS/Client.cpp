@@ -7,6 +7,7 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
+#include "../../include/Signals.h"
 #include "../../include/IPC/MessageQueue.h"
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
@@ -15,10 +16,11 @@
 #include <map>
 
 static int mq_register_id = -1;
+static int mq_client_id = -1;
 static SharedData* data;
 
-static void handlerSigOne(int sig) {
-	std::cout << "TEST\n";
+static void handleSigKill(int sig) {
+	SIGNALS::send(getpid(), SIGRTMIN + 1);
 	
 	return;
 }
@@ -90,10 +92,20 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			std::cerr << "could not send shopping list to cashier\n";
 		}
 	}
-			
+	std::cout << "AMój PID to: " << getpid() << std::endl;
+	SIGNALS::wait(SIGRTMIN + 1);
+	if(data->is_evacuation) {
+		return;
+	}
+	std::cout << "BMój PID to: " << getpid() << std::endl;
 			
 	ReceiptMessage msg_rcv;
-	while(msgrcv(mq_register_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0) == -1) {
+	while(msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0) == -1) {
+		if(data->is_evacuation) {
+			break;
+		}
+		
+	
 		continue;
 	}
 	LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
@@ -101,13 +113,15 @@ void handleReceipt(std::map<int, int> shopping_list) {
 
 
 int main() {
-	struct sigaction sa;
-	sa.sa_handler = handlerSigOne;
-	sigaction(SIGUSR2, &sa, NULL);
+	SIGNALS::init(SIGRTMIN + 1);
+	signal(SIGINT, handleSigKill);
+	signal(SIGTERM, handleSigKill);
+	
 	
 	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	SEMAPHORE::getID();
 	mq_register_id = MESSAGEQUEUE::getRegisterID();
+	mq_client_id = MESSAGEQUEUE::getClientMQID();
 	
 	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
 	
@@ -159,6 +173,10 @@ int main() {
 	for(auto &i : shopping_list_demand) {
 		if(data->is_evacuation) {
 			LOGGER::log("Client " + getClientPIDstring() + " goes away - evacuation\n");
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+				data->current_customers_count--;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			}
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 			return 1;
 		}
@@ -201,6 +219,7 @@ int main() {
 	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE));
 	LOGGER::log("Client " + getClientPIDstring() + " goes away - ended shopping\n");
+	if(data->current_customers_count == 0) SIGNALS::send(getppid(), SIGRTMIN + 2);
 	SHAREDMEMORY::detach();
 
 	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));

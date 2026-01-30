@@ -65,7 +65,6 @@ void* bakeProductOnTray(void* arg) {
 						}
 					
 						newProduct.unique_id = baked_product_id++;
-						std::cout << "\t\t" << newProduct.unique_id << "\n";
 						time(&time_now);
 						newProduct.onsale_time = time_now;
 					
