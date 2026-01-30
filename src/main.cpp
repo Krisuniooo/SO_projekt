@@ -202,7 +202,6 @@ void managerGenerateRaport() {
 }
 
 void* clockSimulationThread(void* arg) {
-	clock_time = OPENING_TIME; 
 	while(keep_generating) {
 		usleep(SIMULATION_MINUTE);
 		clock_time = (clock_time + 1) % static_cast<int>(TOTAL_TIME);
@@ -301,7 +300,7 @@ int main() {
 		std::cerr << "Failed to create cashier generator thread\n";
 		return 1;
 	}*/
-	
+	clock_time = OPENING_TIME; 
 	data->is_open = true;
 	
 	if(pthread_create(&client_gen_thread, NULL, clientGeneratorRoutine, NULL) != 0) {
@@ -314,7 +313,7 @@ int main() {
 			data->is_open = false;
 			std::cout << "A\n";
 			
-			if(data->current_customers_count <=0) {
+			if(data->current_customers_count > 0) {
 				SIGNALS::wait(SIGRTMIN + 2);
 			}
 			

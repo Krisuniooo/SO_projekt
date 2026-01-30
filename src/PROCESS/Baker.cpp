@@ -83,7 +83,7 @@ void* bakeProductOnTray(void* arg) {
 					} else {
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
-					}
+					}	
 				} else {
 					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));
 				}

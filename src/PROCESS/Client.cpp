@@ -77,7 +77,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 			
 	if(data->second_register_active) {
-		msg.mtype = UTILS::getRandom(1, 2);
+		msg.mtype = 1;
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
@@ -92,19 +92,21 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			std::cerr << "could not send shopping list to cashier\n";
 		}
 	}
-	std::cout << "AMój PID to: " << getpid() << std::endl;
+	LOGGER::log("Client " + getClientPIDstring() + " is waiting for signal from register\n");
 	SIGNALS::wait(SIGRTMIN + 1);
+	LOGGER::log("Client " + getClientPIDstring() + " recieved signal from register\n");
 	if(data->is_evacuation) {
 		return;
 	}
 	std::cout << "BMój PID to: " << getpid() << std::endl;
 			
+	LOGGER::log("Client " + getClientPIDstring() + " is waiting for checkout\n");
 	ReceiptMessage msg_rcv;
 	while(msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0) == -1) {
 		if(data->is_evacuation) {
 			break;
 		}
-		
+		std::cout << "Could not recieve checkout\n";
 	
 		continue;
 	}
@@ -184,8 +186,11 @@ int main() {
 		//usleep(CUSTOMER_PRODUCT_BUY_TIME * SIMULATION_MINUTE);
 		
 		for(int j = 0; j<i.count; j++) {
-			if(SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i.id_product))) {
-				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product), true)) {
+			LOGGER::log("Client " + getClientPIDstring() + " tries to take product " + Products_base[i.id_product].label + " if possible\n");
+			if(SEMAPHORE::lock(UTILS::SEM_INDEX_COUNT(i.id_product), true)) {
+				LOGGER::log("Client " + getClientPIDstring() + " is locking product " + Products_base[i.id_product].label + " mutex\n");
+				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product))) {
+					LOGGER::log("Client " + getClientPIDstring() + " is locking shared data mutex\n");
 					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 						std::cout << "Took " << Products_base[i.id_product].label << " id: " << data->trays[i.id_product].buffer[data->trays[i.id_product].head].unique_id << "\n";
 					
@@ -205,6 +210,10 @@ int main() {
 					SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(i.id_product));
 					break;
 				}
+			} else {
+				//std::cout << SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(i.id_product)) << " " << SEMAPHORE::getValue(UTILS::SEM_INDEX_SLOTS(i.id_product)) << "\n";
+				LOGGER::log("Client " + getClientPIDstring() + " could not take " + Products_base[i.id_product].label + " goes to next\n");
+				break;
 			}
 		}
 	}

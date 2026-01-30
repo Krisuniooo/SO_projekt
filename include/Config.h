@@ -23,11 +23,11 @@
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_LINE_SIZE 512
 
-#define MAX_PROCESSES 3000
+#define MAX_PROCESSES 250
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 500 				// N
+#define MAX_CLIENT_INSIDE 50 				// N
 #define OPENING_TIME 10 				// Tp
 #define CLOSING_TIME 62 				// Tk
 #define TOTAL_TIME 80
@@ -36,18 +36,18 @@
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
 
 // Time for baking products
-#define BAKE_MIN_TIME 23.2f
-#define BAKE_MAX_TIME 23.3f
+#define BAKE_MIN_TIME 1.0f
+#define BAKE_MAX_TIME 1.1f
 
 // How many products should be added
-#define BAKE_MIN_PRODUCTS 65
-#define BAKE_MAX_PRODUCTS 120
+#define BAKE_MIN_PRODUCTS 2
+#define BAKE_MAX_PRODUCTS 3
 
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
 #define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
-#define CUSTOMER_SPAWN_MIN_TIME 2.005f
-#define CUSTOMER_SPAWN_MAX_TIME 2.0075f
+#define CUSTOMER_SPAWN_MIN_TIME 0.005f
+#define CUSTOMER_SPAWN_MAX_TIME 0.0075f
 
 #define CASHIER_PRODUCT_SCAN_TIME 1.02f
 

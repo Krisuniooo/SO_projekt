@@ -28,6 +28,8 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
+	LOGGER::log("Register " + std::to_string(cashier_id) + " process starts\n");
+	
 	while(data->is_open) {
 		if (cashier_id > 1) {
 			if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
@@ -52,13 +54,12 @@ int main(int argc, char *argv[]) {
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
-			// simulate scanning time before mutex
-			for(int i = 0; i< PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) {}
-					//usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
-			}
+			sleep(1);
+			
+			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
+				LOGGER::log("Register " + std::to_string(cashier_id) + " locks mutex for " + std::to_string(my_msg.client) + "\n");
 			
 				float total = 0;
 				
@@ -84,12 +85,18 @@ int main(int argc, char *argv[]) {
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
+				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
+				
 				my_msg.mtype = my_msg.client;
 				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 					std::cerr << "could not send shopping list to cashier\n";
 				}
-				std::cout << "Kasjer wysyła do: " << my_msg.client << std::endl;
+				
+				LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
 				SIGNALS::send(my_msg.client, SIGRTMIN + 1);
+				LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
+				
+				
 				
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
@@ -97,6 +104,7 @@ int main(int argc, char *argv[]) {
 					break;
 				}
 			}
+			LOGGER::log("Register " + std::to_string(cashier_id) + " finished scanning products " + std::to_string(my_msg.client) + "\n");
 		}
 	}
 	
@@ -139,10 +147,13 @@ int main(int argc, char *argv[]) {
 			
 			my_msg.mtype = my_msg.client;
 			std::cout << "\t" << my_msg.mtype << "\n";
+			LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
 			if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
 				std::cerr << "could not send shopping list to cashier\n";
 			}
+			LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
 			SIGNALS::send(my_msg.client, SIGRTMIN + 1);
+			LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
 		}
 	}
 	
