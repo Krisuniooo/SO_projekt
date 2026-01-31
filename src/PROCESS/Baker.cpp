@@ -78,6 +78,7 @@ void* bakeProductOnTray(void* arg) {
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(id_product));
 						
+						LOGGER::log("Baker added " + Products_base[id_product].label + " to the tray\n");
 						std::cout << "Added " << Products_base[id_product].label << " new value: " << SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)) << "\n";
 						
 					} else {
@@ -90,11 +91,11 @@ void* bakeProductOnTray(void* arg) {
 			}
 		}
 		
-		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
-		for (int i = 0; i < 100; ++i) {
-    			if (!data->is_running || data->is_evacuation) break;
-			usleep((time/100.0) * SIMULATION_MINUTE);
-		}
+		//int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
+		//for (int i = 0; i < 100; ++i) {
+    		//	if (!data->is_running || data->is_evacuation) break;
+		//	usleep((time/100.0) * SIMULATION_MINUTE);
+		//}
 	}
 	
 	return nullptr;

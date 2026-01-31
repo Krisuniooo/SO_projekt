@@ -4,6 +4,7 @@
 #include <string.h>
 #include <fstream>
 #include <vector>
+#include <errno.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
@@ -31,21 +32,12 @@ int main(int argc, char *argv[]) {
 	LOGGER::log("Register " + std::to_string(cashier_id) + " process starts\n");
 	
 	while(data->is_open) {
-		if (cashier_id > 1) {
-			if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				data->second_register_active = false;
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				data->second_register_active = true;
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				std::cout << "SECOND REGISTER STARTS RUNNING\n";
-			}
-
-        	}
 		
 		if(msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) == -1) {
+			if (errno == EINTR) {
+				break;
+			}
+		
 			if(data->is_evacuation) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " is forcefullyy closing\n");
 				std::cout << "FORCEFULLY CLOSING REGISTER " << cashier_id << "\n";
@@ -54,7 +46,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
-			sleep(1);
+			usleep(350000);
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
@@ -109,51 +101,50 @@ int main(int argc, char *argv[]) {
 	}
 	
 	if(!data->is_evacuation) {
-		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) != -1) {
+		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 						
-			// simulate scanning time before mutex
-			for(int i = 0; i< PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) {
-					//usleep(CASHIER_PRODUCT_SCAN_TIME * SIMULATION_MINUTE);
-				}
-			}
+			usleep(350000);
 			
-			SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
-				
-			float total = 0;
-				
-			file << "\n==================================\n";
-			file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
-			file << "==================================\n";
-				
-			for(int i = 0; i < PRODUCTS; i++) {
-				if(my_msg.counts[i] > 0) {
-				
-					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-					data->total_sold[i]++;
-					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				
-					file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
-					total += my_msg.counts[i] * Products_base[i].price;
-				}
-			}
-			file << "==================================\n";
-			file << "TOTAL: " << total << "$\n";
-			file << "==================================\n\n";
-			file.flush();
-				
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
+				LOGGER::log("Register " + std::to_string(cashier_id) + " locks mutex for " + std::to_string(my_msg.client) + "\n");
 			
-			my_msg.mtype = my_msg.client;
-			std::cout << "\t" << my_msg.mtype << "\n";
-			LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
-			if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
-				std::cerr << "could not send shopping list to cashier\n";
+				float total = 0;
+				
+				file << "\n==================================\n";
+				file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
+				file << "==================================\n";
+				
+				for(int i = 0; i < PRODUCTS; i++) {
+					if(my_msg.counts[i] > 0) {
+					
+						SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+						data->total_sold[i]++;
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					
+						file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
+						total += my_msg.counts[i] * Products_base[i].price;
+					}
+				}
+				file << "==================================\n";
+				file << "TOTAL: " << total << "$\n";
+				file << "==================================\n\n";
+				file.flush();
+				
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
+				
+				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
+				
+				my_msg.mtype = my_msg.client;
+				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+					std::cerr << "could not send shopping list to cashier\n";
+				}
+				
+				LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
+				SIGNALS::send(my_msg.client, SIGRTMIN + 1);
+				LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
 			}
-			LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
-			SIGNALS::send(my_msg.client, SIGRTMIN + 1);
-			LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
+			LOGGER::log("Register " + std::to_string(cashier_id) + " finished scanning products " + std::to_string(my_msg.client) + "\n");
 		}
 	}
 	

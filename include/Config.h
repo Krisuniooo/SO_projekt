@@ -23,14 +23,14 @@
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_LINE_SIZE 512
 
-#define MAX_PROCESSES 250
+#define MAX_PROCESSES 15000
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 50 				// N
+#define MAX_CLIENT_INSIDE 500 				// N
 #define OPENING_TIME 10 				// Tp
-#define CLOSING_TIME 62 				// Tk
-#define TOTAL_TIME 80
+#define CLOSING_TIME 100 				// Tk
+#define TOTAL_TIME 120
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep

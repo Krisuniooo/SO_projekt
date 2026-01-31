@@ -77,7 +77,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 			
 	if(data->second_register_active) {
-		msg.mtype = 1;
+		msg.mtype = UTILS::getRandom(1, 2);
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
@@ -98,7 +98,6 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	if(data->is_evacuation) {
 		return;
 	}
-	std::cout << "BMój PID to: " << getpid() << std::endl;
 			
 	LOGGER::log("Client " + getClientPIDstring() + " is waiting for checkout\n");
 	ReceiptMessage msg_rcv;
@@ -106,7 +105,10 @@ void handleReceipt(std::map<int, int> shopping_list) {
 		if(data->is_evacuation) {
 			break;
 		}
-		std::cout << "Could not recieve checkout\n";
+		if(errno == EINTR) {
+			std::cout << "Could not recieve checkout\n";
+			break;
+		}
 	
 		continue;
 	}

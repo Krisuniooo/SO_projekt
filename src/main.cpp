@@ -77,7 +77,7 @@ void generateClient() {
     		std::cerr << "IPC initialization error \n";
     		exit(1);
     	} else if(pid == 0) {
-    		std::cout << "Generating Client\n";
+    		std::cout << data->current_customers_count << " " << data->second_register_active << "Generating Client\n";
     		execl("./client", "client", NULL);
     		std::cerr << "Client process could not be created! \n";
     		exit(1);
@@ -313,9 +313,11 @@ int main() {
 			data->is_open = false;
 			std::cout << "A\n";
 			
+			std::cout << data->current_customers_count << "\n";
 			if(data->current_customers_count > 0) {
 				SIGNALS::wait(SIGRTMIN + 2);
 			}
+			std::cout << data->current_customers_count << "\n";
 			
 			std::cout << "B\n";
 			data->is_running = false;
@@ -350,6 +352,19 @@ int main() {
 			generateCashier();
 			generateCashier();
 		}
+		
+		/*if(checkOpen() && data->is_open) {
+			if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
+				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				data->second_register_active = false;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
+				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				data->second_register_active = true;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				std::cout << "SECOND REGISTER STARTS RUNNING\n";
+			}
+		}*/
 		sleep(1);
 		
 	}
