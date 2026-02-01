@@ -76,7 +76,11 @@ void generateBaker() {
 			perror("IPC initialization error");
 			exit(1);
 		} else if(pid == 0) {
-			printf("Generating Baker\n");
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				printf("Generating Baker\n");
+				
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
 			execl("./baker", "baker", NULL);
 			perror("Baker process could not be created");
 			exit(1);
@@ -96,15 +100,19 @@ void generateClient() {
 	pid_t pid = fork();
 	if(pid == -1) {
 		perror("IPC initialization error");
-    	exit(1);
-    } else if(pid == 0) {
-    	printf("Generating client - Current clients inside: %d, Second register open: %d\n", data->current_customers_count, data->second_register_active);
-    	execl("./client", "client", NULL);
-    	perror("Client process could not be created!");
-    	exit(1);
-    } else {
-    	add_pid(pid);
-    }
+    		exit(1);
+    	} else if(pid == 0) {
+    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+			printf("Generating client - Current clients inside: %d, Second register open: %d\n", data->current_customers_count, data->second_register_active);	
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+		}
+    	
+    		execl("./client", "client", NULL);
+    		perror("Client process could not be created!");
+    		exit(1);
+    	} else {
+    		add_pid(pid);
+    	}
 }
 
 void* clientGeneratorRoutine(void* arg) {
@@ -123,7 +131,12 @@ void generateCashier() {
 			perror("IPC initialization error");
 	    		exit(1);
 	    	} else if(pid == 0) {
-	    		printf("Generating Cashier 1\n");
+	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				printf("Generating Cashier 1\n");
+				
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
+	    		
 	    		execl("./cashier", "cashier", "1", NULL);
 	    		perror("Cashier 1 process could not be created!");
 	    		exit(1);
@@ -135,7 +148,11 @@ void generateCashier() {
 			perror("IPC initialization error");
 			exit(1);
 		} else if(pid == 0) {
-	    	printf("Generating Cashier 2\n");
+	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				printf("Generating Cashier 2\n");
+				
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
 			execl("./cashier", "cashier", "2", NULL);
 			perror("Cashier 2 process could not be created!");
 			exit(1);
@@ -204,12 +221,15 @@ void handleKillSignals(int sig) {
 	if(main_pid != getpid()) {
 		exit(0);
 	}
+	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+		printf("TRYING TO KILL\n");
+		printf("CHANGED FLAGS\n");
+				
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+	}
 	
-	printf("TRYING TO KILL\n");
-
 	stop_program = 1;
 	keep_generating = false;
-	printf("CHANGED FLAGS\n");
 }
 
 void handleStocktaking(int sig) {
@@ -306,7 +326,10 @@ int main() {
 	while(!stop_program) {
 		if(data->is_evacuation) {
 			if(data->is_running || data->is_open) {
-				printf("EVACUATION IN PROGRESS\n");
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+					printf("EVACUATION IN PROGRESS\n");
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+				}
 				data->is_open = false;
 				data->is_running = false;
 				
@@ -341,7 +364,10 @@ int main() {
 			}
 			
 			if(!data->is_running && data->is_stocktaking) {
-				printf("GENERATING RAPOR\n");
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+					printf("GENERATING RAPORT\n");
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+				}
 				managerGenerateRaport();
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 					data->is_stocktaking = false;
@@ -371,7 +397,10 @@ int main() {
 					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					data->second_register_active = true;
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-					printf("SECOND REGISTER STARTS RUNNING\n");
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+						printf("SECOND REGISTER STARTS RUNNING\n");
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+					}
 				}
 			}
 		}

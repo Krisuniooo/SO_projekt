@@ -47,10 +47,10 @@
 #define DEBUG_MESSAGES 0
 
 #define MAX_CLIENT_INSIDE 20 				// N
-#define RUNNING_TIME 10					// Tp
-#define OPENING_TIME 15 				// Tp + x
-#define CLOSING_TIME 40 				// Tk
-#define TOTAL_TIME 50					// T
+#define RUNNING_TIME 30					// Tp
+#define OPENING_TIME 40 				// Tp + x
+#define CLOSING_TIME 260 				// Tk
+#define TOTAL_TIME 288					// T
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
@@ -130,6 +130,7 @@ enum class SemaphoreTypes {
 	RECEIPT_MUTEX,
 	PROCESSES_MAX,
 	LOGGER_MUTEX,
+	COUT_MUTEX,
 	
 	PRODUCTS_BASE, // do not remove used to track tray ids
 	WZ_MUTEX,
@@ -177,6 +178,7 @@ const SemaphoreInit SemConfig[] = {
 	{ SemaphoreTypes::RECEIPT_MUTEX, 1 },
 	{ SemaphoreTypes::PROCESSES_MAX, MAX_PROCESSES },
 	{ SemaphoreTypes::LOGGER_MUTEX, 1 },
+	{ SemaphoreTypes::COUT_MUTEX, 1 },
 };
 
 struct LogMessage {

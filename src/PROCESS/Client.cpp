@@ -97,7 +97,11 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			break;
 		}
 		if(errno == EINTR) {
-			printf("Could not recieve checkout\n");
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				printf("Could not recieve checkout\n");
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
+			
 			break;
 		}
 	
@@ -185,7 +189,11 @@ int main() {
 				if(SEMAPHORE::lock(UTILS::SEM_INDEX_MUTEX(i.id_product))) {
 					LOGGER::log("Client " + getClientPIDstring() + " is locking shared data mutex\n");
 					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-						printf("Client %d took %s\n", getpid(), (Products_base[i.id_product].label).c_str());
+						
+						if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+							printf("Client %d took %s\n", getpid(), (Products_base[i.id_product].label).c_str());
+							SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+						}
 					
 						data->trays[i.id_product].head = (data->trays[i.id_product].head + 1) % Products_base[i.id_product].max_stock;
 						data->trays[i.id_product].count--;

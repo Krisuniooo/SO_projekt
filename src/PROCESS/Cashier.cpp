@@ -38,7 +38,11 @@ int main(int argc, char *argv[]) {
 		
 			if(data->is_evacuation) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " is forcefullyy closing\n");
-				printf("FORCEFULLY CLOSING REGISTER %d\n", cashier_id);
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+					printf("FORCEFULLY CLOSING REGISTER %d\n", cashier_id);
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+				}
+				
 				break;
 			}
 		} else {
@@ -87,7 +91,10 @@ int main(int argc, char *argv[]) {
 				
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
-					printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+						printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+					}
 					break;
 				}
 			}
@@ -143,7 +150,10 @@ int main(int argc, char *argv[]) {
 							
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
-					printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+						printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+					}
 					break;
 				}
 			}
