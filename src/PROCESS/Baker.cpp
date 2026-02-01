@@ -64,8 +64,7 @@ void* bakeProductOnTray(void* arg) {
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_COUNT(id_product));
 						
 						LOGGER::log("Baker added " + Products_base[id_product].label + " to the tray\n");
-						std::cout << "Added " << Products_base[id_product].label << " new value: " << SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)) << "\n";
-						
+						printf("Added %s, new value: %d", (Products_base[id_product].label).c_str(), SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)));
 					} else {
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_MUTEX(id_product));
 						SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(id_product));

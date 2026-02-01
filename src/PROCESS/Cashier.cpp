@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
 		
 			if(data->is_evacuation) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " is forcefullyy closing\n");
-				std::cout << "FORCEFULLY CLOSING REGISTER " << cashier_id << "\n";
+				printf("FORCEFULLY CLOSING REGISTER %d\n", cashier_id);
 				break;
 			}
 		} else {
@@ -87,7 +87,7 @@ int main(int argc, char *argv[]) {
 				
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
-					std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
+					printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
 					break;
 				}
 			}
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 							
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
-					std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
+					printf("PREPARING TO CLOSE REGISTER %d\n", cashier_id);
 					break;
 				}
 			}
