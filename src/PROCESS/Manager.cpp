@@ -69,11 +69,61 @@ void add_pid(pid_t pid) {
 	pthread_mutex_unlock(&pid_mutex);
 }
 
+void cleanup() {
+	signal(SIGTERM, SIG_IGN);
+	
+	keep_generating = false;
+	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX)); // to unlock clients if needed
+	pthread_join(client_gen_thread, nullptr);
+
+	for(pid_t p : active_pids) {
+		kill(p, SIGTERM); 
+	}
+
+	for(pid_t p : active_pids) {
+		int status;
+		if (waitpid(p, &status, WNOHANG) == 0) {
+			kill(p, SIGKILL); 
+			waitpid(p, NULL, 0);
+		}
+	}
+
+	if(pid_baker != -1) {
+		kill(pid_baker, SIGTERM);
+		waitpid(pid_baker, NULL, 0);
+	}
+	if (pid_cashier1 != -1) {
+		kill(pid_cashier1, SIGTERM);
+		waitpid(pid_cashier1, NULL, 0);
+	}
+	if (pid_cashier2 != -1) {
+		kill(pid_cashier2, SIGTERM);
+		waitpid(pid_cashier2, NULL, 0);
+	}
+	
+	if(data->is_stocktaking) {
+		managerGenerateRaport();
+		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+			data->is_stocktaking = false;
+			
+			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+		}
+	}
+	
+	SHAREDMEMORY::detach();
+	
+	bool destroy_success = IPC::destroyAll();
+	if(!destroy_success) {
+    		perror("could not destroy IPC");
+	}
+}
+
 void generateBaker() {
 	if(pid_baker == -1) {
 		pid_t pid = fork();
 		if(pid == -1) {
 			perror("IPC initialization error");
+			cleanup();
 			exit(1);
 		} else if(pid == 0) {
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
@@ -83,6 +133,7 @@ void generateBaker() {
 			}
 			execl("./baker", "baker", NULL);
 			perror("Baker process could not be created");
+			cleanup();
 			exit(1);
 		} 
 		pid_baker = pid;
@@ -100,6 +151,7 @@ void generateClient() {
 	pid_t pid = fork();
 	if(pid == -1) {
 		perror("IPC initialization error");
+		cleanup();
     		exit(1);
     	} else if(pid == 0) {
     		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
@@ -109,6 +161,7 @@ void generateClient() {
     	
     		execl("./client", "client", NULL);
     		perror("Client process could not be created!");
+    		cleanup();
     		exit(1);
     	} else {
     		add_pid(pid);
@@ -129,6 +182,7 @@ void generateCashier() {
 		pid_t pid = fork();
 		if(pid == -1) {
 			perror("IPC initialization error");
+			cleanup();
 	    		exit(1);
 	    	} else if(pid == 0) {
 	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
@@ -139,6 +193,7 @@ void generateCashier() {
 	    		
 	    		execl("./cashier", "cashier", "1", NULL);
 	    		perror("Cashier 1 process could not be created!");
+	    		cleanup();
 	    		exit(1);
 	    	}
 	    	pid_cashier1 = pid;
@@ -146,6 +201,7 @@ void generateCashier() {
 		pid_t pid = fork();
 		if(pid == -1) {
 			perror("IPC initialization error");
+			cleanup();
 			exit(1);
 		} else if(pid == 0) {
 	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
@@ -155,6 +211,7 @@ void generateCashier() {
 			}
 			execl("./cashier", "cashier", "2", NULL);
 			perror("Cashier 2 process could not be created!");
+			cleanup();
 			exit(1);
 		}
 	    	pid_cashier2 = pid;
@@ -269,6 +326,8 @@ void resetTrays() {
 		}
 	}
 }
+
+
 
 int main() {
 	main_pid = getpid();
@@ -406,54 +465,7 @@ int main() {
 		}
 		pause(); // wait for any signal to continue
 	}
-	
-	signal(SIGTERM, SIG_IGN);
-	
-	keep_generating = false;
-	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
-	pthread_join(client_gen_thread, nullptr);
-
-	for(pid_t p : active_pids) {
-		kill(p, SIGTERM); 
-	}
-
-	for(pid_t p : active_pids) {
-		int status;
-		if (waitpid(p, &status, WNOHANG) == 0) {
-			kill(p, SIGKILL); 
-			waitpid(p, NULL, 0);
-		}
-	}
-
-	if(pid_baker != -1) {
-		kill(pid_baker, SIGTERM);
-		waitpid(pid_baker, NULL, 0);
-	}
-	if (pid_cashier1 != -1) {
-		kill(pid_cashier1, SIGTERM);
-		waitpid(pid_cashier1, NULL, 0);
-	}
-	if (pid_cashier2 != -1) {
-		kill(pid_cashier2, SIGTERM);
-		waitpid(pid_cashier2, NULL, 0);
-	}
-	
-	if(data->is_stocktaking) {
-		managerGenerateRaport();
-		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-			data->is_stocktaking = false;
-			
-			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-		}
-	}
-	
-	SHAREDMEMORY::detach();
-	
-	bool destroy_success = IPC::destroyAll();
-	if(!destroy_success) {
-    		perror("could not destroy IPC");
-	}
-
+	cleanup();
 
 	return 0;
 }
