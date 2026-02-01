@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
-			//usleep(350000);
+			usleep(350000);
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
 					if(my_msg.counts[i] > 0) {
 					
 						SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-						data->total_sold[i]++;
+						data->total_sold[i] += my_msg.counts[i];
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					
 						float total_local = my_msg.counts[i] * Products_base[i].price;
@@ -106,7 +106,7 @@ int main(int argc, char *argv[]) {
 		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
-			//usleep(350000);
+			usleep(350000);
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
@@ -123,7 +123,7 @@ int main(int argc, char *argv[]) {
 					if(my_msg.counts[i] > 0) {
 					
 						SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-						data->total_sold[i]++;
+						data->total_sold[i] += my_msg.counts[i];
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					
 						float total_local = my_msg.counts[i] * Products_base[i].price;

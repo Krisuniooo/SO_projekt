@@ -27,6 +27,11 @@ bool checkConfig() {
 		return false;
 	}
 	
+	if(CLOSING_TIME >= TOTAL_TIME || OPENING_TIME >= TOTAL_TIME || RUNNING_TIME >= TOTAL_TIME || CLOSING_TIME <= 0 || OPENING_TIME <= 0 || RUNNING_TIME <=0 || TOTAL_TIME <= 0) {
+		perror("Config error: bad data for time");
+		return false;	
+	}
+	
 	if(BAKE_MIN_TIME > BAKE_MAX_TIME || BAKE_MIN_TIME < 0.0 || BAKE_MAX_TIME < 0.0) {
 		perror("Config error: max baking time should be greater than min baking time and be positive");
 		return false;
@@ -67,6 +72,50 @@ void add_pid(pid_t pid) {
 	pthread_mutex_lock(&pid_mutex);
 	active_pids.push_back(pid);
 	pthread_mutex_unlock(&pid_mutex);
+}
+
+void managerGenerateRaport() {
+	FILE *file = fopen(MANAGER_RAPORT_PATH, "w");
+	
+	if(!file) {
+		perror("Failed to generate manager raport file");
+		return;
+	}
+	
+	char ts[32];
+	UTILS::getTimestamp(ts, sizeof(ts));
+	
+	fprintf(file, "=== MANAGER RAPORT CREATED AT [%s] ===\n\n", ts);
+	
+	fprintf(file, "BAKER - STATS:\n");
+	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+		for(int i=0; i<PRODUCTS; i++) {
+			fprintf(file, "produced %d of %s pieces\n", data->total_produced[i], (Products_base[i].label).c_str());
+		}
+	
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	}
+	fprintf(file, "\nMANAGER - LEFT ON TRAYS:\n");
+	for(int i=0; i<PRODUCTS; i++) {
+		fprintf(file, "left %d %s pieces on tray\n", SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(i)), (Products_base[i].label).c_str());
+	}
+	fprintf(file, "\nMANAGER - TOTAL TRASHED:\n");
+	for(int i=0; i<PRODUCTS; i++) {
+		fprintf(file, "trashed %d %s\n", data->total_trashed[i], (Products_base[i].label).c_str());
+	}
+	
+	
+	fprintf(file, "\nCASHIER - STATS:\n");
+	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+		for(int i=0; i<PRODUCTS; i++) {
+			fprintf(file, "sold %d of %s pieces, total value of %.2f$\n", data->total_sold[i], (Products_base[i].label).c_str(), (data->total_sold[i] * Products_base[i].price));
+		}
+	
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	}
+	
+	
+	fclose(file);
 }
 
 void cleanup() {
@@ -233,46 +282,6 @@ void terminateCashiers() {
 	}
 }
 
-void managerGenerateRaport() {
-	FILE *file = fopen(MANAGER_RAPORT_PATH, "w");
-	
-	if(!file) {
-		perror("Failed to generate manager raport file");
-		return;
-	}
-	
-	char ts[32];
-	UTILS::getTimestamp(ts, sizeof(ts));
-	
-	fprintf(file, "=== MANAGER RAPORT CREATED AT [%s] ===\n\n", ts);
-	
-	fprintf(file, "BAKER - STATS:\n");
-	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-		for(int i=0; i<PRODUCTS; i++) {
-			fprintf(file, "produced %d of %s pieces\n", data->total_produced[i], (Products_base[i].label).c_str());
-		}
-	
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-	}
-	fprintf(file, "\nMANAGER - LEFT ON TRAYS:\n");
-	for(int i=0; i<PRODUCTS; i++) {
-		fprintf(file, "left %d %s pieces on tray\n", SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(i)), (Products_base[i].label).c_str());
-	}
-	
-	
-	fprintf(file, "\nCASHIER - STATS:\n");
-	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-		for(int i=0; i<PRODUCTS; i++) {
-			fprintf(file, "sold %d of %s pieces, total value of %.2f$\n", data->total_sold[i], (Products_base[i].label).c_str(), (data->total_sold[i] * Products_base[i].price));
-		}
-	
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-	}
-	
-	
-	fclose(file);
-}
-
 
 void handleKillSignals(int sig) {
 	if(main_pid != getpid()) {
@@ -299,7 +308,7 @@ void handleStocktaking(int sig) {
 
 void handleEvacuation(int sig) {
 	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-		data->is_evacuation = !data->is_evacuation;
+		data->is_evacuation = true;
 		
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	}
@@ -396,10 +405,7 @@ int main() {
 					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i));
 				}
 				
-				terminateBaker();
-				terminateCashiers();
-				
-				resetTrays();
+				kill(0, SIGTERM);
 			}
 		}
 		else {

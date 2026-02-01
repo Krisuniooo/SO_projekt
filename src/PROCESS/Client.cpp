@@ -10,11 +10,10 @@
 static int mq_register_id = -1;
 static int mq_client_id = -1;
 static SharedData* data;
+static volatile sig_atomic_t sig_term = 0;
 
 static void handleSigKill(int sig) {
-	SIGNALS::send(getpid(), SIGRTMIN + 1);
-	
-	return;
+	sig_term = 1;
 }
 
 std::vector<ShoppingList> generateShoppingList() {
@@ -69,8 +68,15 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 			
 	if(data->second_register_active) {
+		if(data->register_queue_size[0] > data->register_queue_size[1]) {
+			msg.mtype = 2;
+			data->register_queue_size[1]++;
+		} else {
+			msg.mtype = 1;
+			data->register_queue_size[0]++;
+		}
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-		msg.mtype = UTILS::getRandom(1, 2);
+		
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
@@ -78,6 +84,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			return;
 		}
 	} else {
+		data->register_queue_size[0]++;
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
@@ -92,22 +99,45 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			
 	LOGGER::log("Client " + getClientPIDstring() + " is waiting for checkout\n");
 	ReceiptMessage msg_rcv;
-	while(msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0) == -1) {
-		if(data->is_evacuation) {
-			break;
-		}
-		if(errno == EINTR) {
-			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-				printf("Could not recieve checkout\n");
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
-			}
-			
+	bool recieved_checkout = false;
+	while(true) {
+		if(data->is_evacuation || sig_term) {
+			printf("Evacuation pending - client runs away");
+			LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
 			break;
 		}
 	
-		continue;
+		ssize_t recieve = msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0);
+		
+		if(recieve != -1) {
+			recieved_checkout = true;
+			break;
+		} else {
+			if(errno == EINTR) {
+				if(data->is_evacuation || sig_term) {
+					printf("Evacuation pending - client runs away\n");
+					LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
+					break;
+				}
+			}
+		}
 	}
-	LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
+
+	data->register_queue_size[msg.mtype - 1]--;
+	if(recieved_checkout) {
+		LOGGER::log("Client " + getClientPIDstring() + " recieves checkout\n");
+	} else { // throw to trash
+		for(auto i : shopping_list) {
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+				data->total_trashed[i.first] += i.second;
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+			}
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				LOGGER::log("Client " + getClientPIDstring() + " trashed " + std::to_string(i.second) + " " + Products_base[i.first].label + "\n");
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
+		}
+	}
 }
 
 
@@ -123,12 +153,6 @@ int main() {
 	mq_client_id = MESSAGEQUEUE::getClientMQID();
 	
 	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
-	
-	if(!data->is_open || data->is_evacuation) {
-		LOGGER::log("Client " + getClientPIDstring() + " goes away - shop closed\n");
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
-		return 0;
-	}
 	
 	if (!SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE))) {
 		LOGGER::log("Client " + getClientPIDstring() + " could not enter shop - semaphore error\n");
@@ -195,6 +219,7 @@ int main() {
 							SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 						}
 					
+						memset(&(data->trays[i.id_product].buffer[data->trays[i.id_product].head]), 0, sizeof(Product));
 						data->trays[i.id_product].head = (data->trays[i.id_product].head + 1) % Products_base[i.id_product].max_stock;
 						data->trays[i.id_product].count--;
 					

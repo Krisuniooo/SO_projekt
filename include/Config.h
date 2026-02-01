@@ -42,15 +42,15 @@
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_SIZE 512
 
-#define MAX_PROCESSES 50
+#define MAX_PROCESSES 10000
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 20 				// N
+#define MAX_CLIENT_INSIDE 1000 				// N
 #define RUNNING_TIME 30					// Tp
 #define OPENING_TIME 40 				// Tp + x
-#define CLOSING_TIME 260 				// Tk
-#define TOTAL_TIME 288					// T
+#define CLOSING_TIME 70 				// Tk
+#define TOTAL_TIME 144					// T
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
@@ -66,8 +66,8 @@
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
 #define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
-#define CUSTOMER_SPAWN_MIN_TIME 0.205f
-#define CUSTOMER_SPAWN_MAX_TIME 0.2075f
+#define CUSTOMER_SPAWN_MIN_TIME 0.000f
+#define CUSTOMER_SPAWN_MAX_TIME 0.000f
 
 #define CASHIER_PRODUCT_SCAN_TIME 1.02f
 
@@ -121,6 +121,7 @@ struct SharedData {
 	int total_sold[PRODUCTS];
 	int total_trashed[PRODUCTS];
 	
+	int register_queue_size[2];
 	bool second_register_active;
 };
 
