@@ -1,9 +1,3 @@
-#include <unistd.h>
-#include <iostream>
-#include <signal.h>
-#include <string.h>
-#include <vector>
-#include <sys/stat.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
@@ -12,8 +6,6 @@
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/IPC/Fifo.h"
-
-#include <map>
 
 static int mq_register_id = -1;
 static int mq_client_id = -1;
@@ -82,7 +74,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
-			std::cerr << "could not send shopping list to cashier\n";
+			perror("could not send shopping list to cashier");
 			return;
 		}
 	} else {
@@ -90,13 +82,10 @@ void handleReceipt(std::map<int, int> shopping_list) {
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
-			std::cerr << "could not send shopping list to cashier\n";
+			perror("could not send shopping list to cashier");
 			return;
 		}
 	}
-	//LOGGER::log("Client " + getClientPIDstring() + " is waiting for signal from register\n");
-	//SIGNALS::wait(SIGRTMIN + 1);
-	//LOGGER::log("Client " + getClientPIDstring() + " recieved signal from register\n");
 	if(data->is_evacuation) {
 		return;
 	}

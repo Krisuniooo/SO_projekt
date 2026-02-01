@@ -1,24 +1,9 @@
-#include <unistd.h>
-#include <iostream>
-#include <signal.h>
-#include <string.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
 #include "../../include/IPC/SharedMemory.h"
 #include "../../include/IPC/Semaphore.h"
 #include "../../include/IPC/Fifo.h"
-
-#include <cstdio>
-#include <cmath>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
- #include <fcntl.h>
- #include <stdio.h>
- #include <vector>
-#include <pthread.h>
-#include <ctime>
 
 static pthread_t trays_thread_ids[PRODUCTS];
 static SharedData* data;
@@ -126,7 +111,6 @@ int main() {
 	
 	while(data->is_running && !data->is_evacuation && !sigterm_handle) {
 		sigsuspend(&oldmask);
-		std::cout << "\tRECIEVED SIGNAL " << data->is_evacuation << "\n";
 	}
 	
 	for(int i=0; i< PRODUCTS; i++) {

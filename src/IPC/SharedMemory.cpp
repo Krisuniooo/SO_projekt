@@ -2,13 +2,6 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <cerrno>
-#include <fstream>
-
 static int shm_id = -1;
 static void* shm_ptr = nullptr;
 
@@ -17,20 +10,20 @@ bool SHAREDMEMORY::init() {
 	bool setupSuccess = UTILS::setupKeyFile(SHARED_MEM_KEY_PATH);
 	
 	if(setupSuccess == false) {
-		std::cerr << "Could not create key file\n";
+		perror("Could not create key file");
 		return false;
 	}
 	
 	bool createSuccess = SHAREDMEMORY::create();
 	
 	if(createSuccess == false) {
-		std::cerr << "Could not create shared memory block\n";
+		perror("Could not create shared memory block");
 		return false;
 	}
 	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	if (data == (void*)-1) {
-		std::cerr << "Attach failed\n";
+		perror("Attach failed");
 		return false;
 	}
 	
@@ -59,7 +52,8 @@ bool SHAREDMEMORY::create() {
 	int block_id = SHAREDMEMORY::getID(IPC_CREAT | IPC_EXCL | 0600);
 	
 	if(block_id == -1) {
-		std::cerr << "Shared Memory IPC_CREAT Error\n";
+	
+		perror("Shared Memory IPC_CREAT Error");
 		return false;
 	}
 	
@@ -73,14 +67,14 @@ int SHAREDMEMORY::getID(int flags) {
 	key_t key = ftok(SHARED_MEM_KEY_PATH, SHARED_MEM_KEY);
 
 	if(key == -1) {
-		std::cerr << "ftok Error: " << strerror(errno) << "\n";
+		perror("ftok Error");
 		return -1;
 	}
 	
 	shm_id = shmget(key, sizeof(SharedData), flags);
 	
 	if(shm_id == -1) {
-		std::cerr << "shmget Error: " << strerror(errno) << "\n";
+		perror("shmget Error");
 	}
 	
 	return shm_id;
@@ -92,7 +86,7 @@ void* SHAREDMEMORY::attach() {
 	shm_ptr = shmat(shm_id, nullptr, 0);
 
 	if(shm_ptr == (void*)-1) {
-		std::cerr << "shmat Error: " << strerror(errno) << "\n";
+		perror("shmat Error");
 		shm_ptr = nullptr;
 	}
 	return shm_ptr;
@@ -102,7 +96,7 @@ bool SHAREDMEMORY::detach() {
 	if(shm_ptr == nullptr || shm_ptr == (void*)-1) return true;
 
 	if(shmdt(shm_ptr) == -1) {
-		std::cerr << "shmdt Error: " << strerror(errno) << "\n";
+		perror("shmdt Error");
 		return false;
 	}
 	
@@ -114,7 +108,7 @@ bool SHAREDMEMORY::destroy() {
 	if(shm_id == -1) return false;
 	
 	if(shmctl(shm_id, IPC_RMID, nullptr) == -1) {
-		std::cerr << "shmctl Error (delete): " << strerror(errno) << "\n";
+		perror("shmctl Error (IPC_RMID)");
 		return false;
 	}
 	shm_id = -1;

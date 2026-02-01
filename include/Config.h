@@ -1,8 +1,29 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <cstdio>
+#include <cmath>
+#include <pthread.h>
+#include <ctime>
 #include <string>
 #include <limits.h>
+#include <iostream>
+#include <signal.h>
+#include <vector>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <errno.h>
+#include <random>
+#include <map>
+#include <type_traits>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/sem.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
+#include <sys/time.h> 
+#include <sys/ioctl.h>
 
 #define SHARED_MEM_KEY_PATH "/tmp/ciastkarnia_shm"
 #define SHARED_MEM_KEY 'M'
@@ -18,10 +39,8 @@
 
 #define MANAGER_RAPORT_PATH "data/raport.log"
 #define LOGGER_PATH "data/data.log"
-#define LOG_MAX_SIZE 512
-
 #define RECEIPT_PATH "data/receipt.log"
-#define LOG_MAX_LINE_SIZE 512
+#define LOG_MAX_SIZE 512
 
 #define MAX_PROCESSES 50
 
@@ -29,9 +48,9 @@
 
 #define MAX_CLIENT_INSIDE 20 				// N
 #define RUNNING_TIME 10					// Tp
-#define OPENING_TIME 15 				// Tp + 30
+#define OPENING_TIME 15 				// Tp + x
 #define CLOSING_TIME 40 				// Tk
-#define TOTAL_TIME 50
+#define TOTAL_TIME 50					// T
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep

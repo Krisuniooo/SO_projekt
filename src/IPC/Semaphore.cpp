@@ -2,27 +2,20 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <cerrno>
-#include <fstream>
-
 static int sem_id = -1;
 
 bool SEMAPHORE::init() {
 	bool setupSuccess = UTILS::setupKeyFile(SEMAPHORE_KEY_PATH);
 	
 	if(setupSuccess == false) {
-		std::cerr << "Could not create key file\n";
+		perror("Could not create key file");
 		return false;
 	}
 	
 	bool createSuccess = SEMAPHORE::create();
 	
 	if(createSuccess == false) {
-		std::cerr << "Could not create set of semaphores\n";
+		perror("could not create set of semaphores");
 		return false;
 	}
 	
@@ -61,14 +54,14 @@ int SEMAPHORE::getID(int flags) {
 	key_t key = ftok(SEMAPHORE_KEY_PATH, SEMAPHORE_KEY);
 
 	if(key == -1) {
-		std::cerr << "ftok Error: " << strerror(errno) << "\n";
+		perror("ftok Error");
 		return -1;
 	}
 	
 	sem_id = semget(key, static_cast<int>(SemaphoreTypes::SEM_COUNT), flags);
 	
 	if(sem_id == -1) {
-		std::cerr << "semget Error: " << strerror(errno) << "\n";
+		perror("semget Error");
 	}
 	
 	return sem_id;
@@ -88,7 +81,7 @@ bool SEMAPHORE::lock(int sem_num, bool nowait) {
 		if(errno == EAGAIN || (nowait && errno == EWOULDBLOCK)) 
 			return false;
 		if(errno != EINTR && errno != EIDRM) {
-			std::cerr << "semop Error: " << strerror(errno) << "\n";
+			perror("semop Error");
 			return false;
 		}
 	}
@@ -106,7 +99,7 @@ bool SEMAPHORE::unlock(int sem_num) {
 	sop.sem_flg = 0;
 	
 	if(semop(sem_id, &sop, 1) == -1) {
-		std::cerr << "semop Error: " << strerror(errno) << "\n";
+		perror("semop Error");
 		return false;
 	}
 	
@@ -126,7 +119,7 @@ void SEMAPHORE::setValue(int sem_num, int new_val) {
 
 	int val = semctl(sem_id, sem_num, SETVAL, arg);
 	if(val == -1) {
-		std::cerr << "semctl Error (SETVAL): " << strerror(errno) << "\n";
+		perror("semctl Error (SETVAL)");
 	}
 }
 
@@ -135,7 +128,7 @@ int SEMAPHORE::getValue(int sem_num) {
 	
 	int value = semctl(sem_id, sem_num, GETVAL);
 	if(value == -1) {
-		std::cerr << "semctl Error (GETVAL): " << strerror(errno) << "\n";
+		perror("semctl Error (GETVAL)");
 	}
 	
 	return value;
@@ -143,12 +136,12 @@ int SEMAPHORE::getValue(int sem_num) {
 
 bool SEMAPHORE::destroy() {
 	if(sem_id == -1) {
-		std::cerr << "semctl error (IPC_RMID): Semaphore not initialized\n";
+		perror("semctl Error (IPC_RMID): Semaphore not initialized");
 		return false;
 	} 
 	
 	if(semctl(sem_id, 0, IPC_RMID, 0) == -1) {
-		std::cerr << "semctl error (IPC_RMID): Could not remove set\n";
+		perror("semctl Error (IPC_RMID): could not remove set");
 		return false;
 	}
 	

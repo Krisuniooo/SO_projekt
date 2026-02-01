@@ -4,16 +4,11 @@
 #include "../include/IPC/MessageQueue.h"
 #include "../include/IPC/Semaphore.h"
 
-#include <iostream>
-#include <string>
-#include <pthread.h>
-#include <unistd.h>
-
 bool LOGGER::init() {
 	bool setupSuccess = UTILS::setupKeyFile(LOGGER_PATH);
 	
 	if(setupSuccess == false) {
-		std::cerr << "Could not create key file\n";
+		perror("Could not create key file");
 		return false;
 	}
 	
@@ -25,7 +20,7 @@ void LOGGER::log(const std::string& message) {
 		FILE* file = fopen(LOGGER_PATH, "a");
 		
 		if(!file) {
-			std::cerr << "Could not save message - data might be lost\n";
+			perror("Could not save message - data might be lost");
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::LOGGER_MUTEX));
 			return;
 		}

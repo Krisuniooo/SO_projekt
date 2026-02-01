@@ -1,10 +1,3 @@
-#include <unistd.h>
-#include <iostream>
-#include <signal.h>
-#include <string.h>
-#include <fstream>
-#include <vector>
-#include <errno.h>
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 #include "../../include/Logger.h"
@@ -17,15 +10,20 @@ int main(int argc, char *argv[]) {
 	int cashier_id = std::stoi(argv[1]);
 	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
-	int semid = SEMAPHORE::getID();
+	SEMAPHORE::getID();
 	int mq_register_id = MESSAGEQUEUE::getRegisterID();
 	int mq_client_id = MESSAGEQUEUE::getClientMQID();
 	
 	ReceiptMessage my_msg;
 	
-	std::ofstream file(RECEIPT_PATH, std::ios::app);
-	if(!file.is_open()) {
-		std::cerr << "Could not open Receipt file\n";
+	if(!UTILS::setupKeyFile(RECEIPT_PATH)) {
+		perror("Could not create Receipt file");
+		return 1;
+	}
+	
+	FILE* file = fopen(RECEIPT_PATH, "w");
+	if(!file) {
+		perror("Could not open Receipt file");
 		return 1;
 	}
 	
@@ -55,9 +53,9 @@ int main(int argc, char *argv[]) {
 			
 				float total = 0;
 				
-				file << "\n==================================\n";
-				file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
-				file << "==================================\n";
+				fprintf(file, "\n==================================\n");
+				fprintf(file, "	RECEIPT - CLIENT %d", my_msg.client);
+				fprintf(file, "\n==================================\n");
 				
 				for(int i = 0; i < PRODUCTS; i++) {
 					if(my_msg.counts[i] > 0) {
@@ -66,14 +64,14 @@ int main(int argc, char *argv[]) {
 						data->total_sold[i]++;
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					
-						file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
-						total += my_msg.counts[i] * Products_base[i].price;
+						float total_local = my_msg.counts[i] * Products_base[i].price;
+						fprintf(file, "%s %d - %.2f\n", (Products_base[i].label).c_str(), my_msg.counts[i], total_local);
+						total += total_local;
 					}
 				}
-				file << "==================================\n";
-				file << "TOTAL: " << total << "$\n";
-				file << "==================================\n\n";
-				file.flush();
+				fprintf(file, "==================================\n");
+				fprintf(file, "TOTAL: %.2f$", total);
+				fprintf(file, "\n==================================\n");
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
@@ -84,14 +82,8 @@ int main(int argc, char *argv[]) {
 					if(errno == EINTR) {
 						break;
 					}
-					std::cerr << "could not send shopping list to cashier\n";
+					perror("could not send shopping list to client");
 				}
-				
-				//LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
-				//SIGNALS::send(my_msg.client, SIGRTMIN + 1);
-				//LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
-				
-				
 				
 				if(data->is_evacuation) {
 					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
@@ -106,7 +98,7 @@ int main(int argc, char *argv[]) {
 	if(!data->is_evacuation) {
 		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
-						
+			
 			//usleep(350000);
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
@@ -116,9 +108,9 @@ int main(int argc, char *argv[]) {
 			
 				float total = 0;
 				
-				file << "\n==================================\n";
-				file << "	RECEIPT - CLIENT " << std::to_string(my_msg.client) << "\n";
-				file << "==================================\n";
+				fprintf(file, "\n==================================\n");
+				fprintf(file, "	RECEIPT - CLIENT %d", my_msg.client);
+				fprintf(file, "\n==================================\n");
 				
 				for(int i = 0; i < PRODUCTS; i++) {
 					if(my_msg.counts[i] > 0) {
@@ -127,14 +119,14 @@ int main(int argc, char *argv[]) {
 						data->total_sold[i]++;
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					
-						file << Products_base[i].label << " " << std::to_string(my_msg.counts[i]) << " - " << std::to_string(my_msg.counts[i] * Products_base[i].price) << "\n";
-						total += my_msg.counts[i] * Products_base[i].price;
+						float total_local = my_msg.counts[i] * Products_base[i].price;
+						fprintf(file, "%s %d - %.2f\n", (Products_base[i].label).c_str(), my_msg.counts[i], total_local);
+						total += total_local;
 					}
 				}
-				file << "==================================\n";
-				file << "TOTAL: " << total << "$\n";
-				file << "==================================\n\n";
-				file.flush();
+				fprintf(file, "==================================\n");
+				fprintf(file, "TOTAL: %.2f$", total);
+				fprintf(file, "\n==================================\n");
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
@@ -142,15 +134,18 @@ int main(int argc, char *argv[]) {
 				
 				my_msg.mtype = my_msg.client;
 				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
-					std::cerr << "could not send shopping list to cashier\n";
 					if(errno == EINTR) {
 						break;
 					}
+					perror("could not send shopping list to client");
 				}
-				
-				//LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
-				//SIGNALS::send(my_msg.client, SIGRTMIN + 1);
-				//LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
+
+							
+				if(data->is_evacuation) {
+					LOGGER::log("Register " + std::to_string(cashier_id) + " is preparing to close\n");
+					std::cout << "PREPARING TO CLOSE REGISTER " << cashier_id << "\n";
+					break;
+				}
 			}
 			LOGGER::log("Register " + std::to_string(cashier_id) + " finished scanning products " + std::to_string(my_msg.client) + "\n");
 		}
@@ -158,7 +153,7 @@ int main(int argc, char *argv[]) {
 	
 	LOGGER::log("Register " + std::to_string(cashier_id) + " finished job\n");
 	
-	file.close();
+	fclose(file);
 	SHAREDMEMORY::detach();
 	return 0;
 }

@@ -5,7 +5,7 @@ bool IPC::init() {
 	bool shm_initialized = SHAREDMEMORY::init();
 	//Log
 	if(!shm_initialized) {
-		std::cout << "\n\tSHAREDMEMORY initialization failed\n";
+		perror("SHARED MEMORY initialization failed");
 		IPC::destroyAll();
 		return false;
 	}
@@ -13,21 +13,21 @@ bool IPC::init() {
 	bool sem_initialized = SEMAPHORE::init();
 	//Log
 	if(!sem_initialized) {
-		std::cout << "\n\tSEMAPHORE initialization failed\n";
+		perror("SEMAPHORE initialization failed");
 		IPC::destroyAll();
 		return false;
 	}
 	
 	bool mq_initialized = MESSAGEQUEUE::init();
 	if(!mq_initialized) {
-		std::cout << "\n\tMESSAGEQUEUE initialization failed\n";
+		perror("MESSEGEQUEUE initialization failed");
 		IPC::destroyAll();
 		return false;
 	}
 	
 	bool fifo_initialized = FIFO::init();
 	if(!fifo_initialized) {
-		std::cout << "\n\tFIFO initialization failed\n";
+		perror("FIFO initialization failed");
 		IPC::destroyAll();
 		return false;
 	}

@@ -19,7 +19,7 @@ void SIGNALS::send(int pid, int signal) {
 		if(errno == ESRCH) {
 			return;
 		} else {
-			std::cerr << "signal error " << errno << "\n";
+			perror("Signal send error");
 		}
 	}
 }
@@ -32,7 +32,7 @@ void SIGNALS::wait(int signal) {
 
 	if(result == -1) {
 		if(errno != EINTR) {
-			std::cerr << "SIGNALS wait error: " << strerror(errno) << "\n";
+			perror("Signal wait error");
 		}
 	}
 }

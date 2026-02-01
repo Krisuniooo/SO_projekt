@@ -1,18 +1,13 @@
 #include "../include/Utils.h"
 #include "../include/Config.h"
 
-#include <fstream>
-#include <string>
-#include <random>
-#include <type_traits>
-
 bool UTILS::setupKeyFile(const char* path) {
-	std::ofstream file(path, std::ios::app);
+	FILE* file = fopen(path, "a");
 	
-	if(!file.is_open()) 
+	if(!file) 
 		return false;
 		
-	file.close();
+	fclose(file);
 	return true;
 }
 

@@ -1,15 +1,3 @@
-#include <iostream>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/sem.h>
-#include <sys/wait.h>
-#include <signal.h>
-#include <vector>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/time.h> 
-
 #include "../include/IPC.h"
 #include "../include/Logger.h"
 #include "../include/Config.h"
@@ -17,7 +5,6 @@
 #include "../include/Signals.h"
 
 static pthread_t client_gen_thread;
-static pthread_t cashier_gen_thread;
 std::vector<pid_t> active_pids;
 pthread_mutex_t pid_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool keep_generating = true;
@@ -31,9 +18,39 @@ static int main_pid = -1;
 static struct itimerval tout_val; 
 
 bool checkConfig() {
-	if((static_cast<int>(SemaphoreTypes::SEM_COUNT) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS*3) {
-		std::cerr << "Config error: N doesnt match semaphore count";
+	if(PRODUCTS < 10) {
+		perror("Config error: Product types need to be equal or greater than 10");
 		return false;
+	}
+	if((static_cast<int>(SemaphoreTypes::SEM_COUNT) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS*3) {
+		perror("Config error: N doesnt match semaphore count");
+		return false;
+	}
+	
+	if(BAKE_MIN_TIME > BAKE_MAX_TIME || BAKE_MIN_TIME < 0.0 || BAKE_MAX_TIME < 0.0) {
+		perror("Config error: max baking time should be greater than min baking time and be positive");
+		return false;
+	}
+	if(CUSTOMER_MAX_PRODUCT_DEMAND <= 0) {
+		perror("Config error: Customers must demand positive number"); 
+		return false;
+	}
+	if(CUSTOMER_MAX_PRODUCT_DEMAND <= 0) {
+		perror("Config error: Customers must demand positive number"); 
+		return false;
+	}
+	
+	for(auto i : Products_base) {
+		if(i.price <= 0.0 || i.max_stock <= 0 || i.max_stock > MAX_STOCK) {
+			perror("Config error: bad data for products"); 
+			return false;
+		}
+	}
+	for(auto i : SemConfig) {
+		if(i.value < 0) {
+			perror("Config error: semaphores cant contain negative number as default"); 
+			return false;
+		}
 	}
 	
 	return true;
@@ -56,12 +73,12 @@ void generateBaker() {
 	if(pid_baker == -1) {
 		pid_t pid = fork();
 		if(pid == -1) {
-			std::cerr << "IPC initialization error \n";
+			perror("IPC initialization error");
 			exit(1);
 		} else if(pid == 0) {
 			std::cout << "Generating Baker\n";
 			execl("./baker", "baker", NULL);
-			std::cerr << "Baker process could not be created! \n";
+			perror("Baker process could not be created");
 			exit(1);
 		} 
 		pid_baker = pid;
@@ -78,12 +95,12 @@ void terminateBaker() {
 void generateClient() {
 	pid_t pid = fork();
 	if(pid == -1) {
-    		std::cerr << "IPC initialization error \n";
+		perror("IPC initialization error");
     		exit(1);
     	} else if(pid == 0) {
     		std::cout << data->current_customers_count << " " << data->second_register_active << "Generating Client\n";
     		execl("./client", "client", NULL);
-    		std::cerr << "Client process could not be created! \n";
+    		perror("Client process could not be created!");
     		exit(1);
     	} else {
     		add_pid(pid);
@@ -103,29 +120,29 @@ void generateCashier() {
 	if(pid_cashier1 == -1) {
 		pid_t pid = fork();
 		if(pid == -1) {
-	    		std::cerr << "IPC initialization error \n";
+			perror("IPC initialization error");
 	    		exit(1);
 	    	} else if(pid == 0) {
 	    		std::cout << "Generating Cashier 1\n";
 	    		execl("./cashier", "cashier", "1", NULL);
-	    		std::cerr << "Cashier 1 process could not be created! \n";
+	    		perror("Cashier 1 process could not be created!");
 	    		exit(1);
 	    	}
 	    	pid_cashier1 = pid;
 	} else if(pid_cashier2 == -1) {
 		pid_t pid = fork();
 		if(pid == -1) {
-			std::cerr << "IPC initialization error \n";
+			perror("IPC initialization error");
 			exit(1);
 		} else if(pid == 0) {
 			std::cout << "Generating Cashier 2\n";
 			execl("./cashier", "cashier", "2", NULL);
-			std::cerr << "Cashier 2 process could not be created! \n";
+			perror("Cashier 2 process could not be created!");
 			exit(1);
 		}
 	    	pid_cashier2 = pid;
 	} else {
-		std::cerr << "No more cashiers could be created\n";
+		perror("No more cashiers could be created");
 	}
 }
 
@@ -146,7 +163,7 @@ void managerGenerateRaport() {
 	FILE *file = fopen(MANAGER_RAPORT_PATH, "w");
 	
 	if(!file) {
-		std::cerr << "Failed to generate manager raport file\n";
+		perror("Failed to generate manager raport file");
 		return;
 	}
 	
@@ -238,18 +255,18 @@ int main() {
 	main_pid = getpid();
 
 	if (!checkConfig()) {
-	    	std::cerr << "Config error \n";
+	    	perror("Config error");
     		return 1;
 	}
 
     	if (!IPC::init()) {
-    		std::cerr << "IPC initialization error \n";
+    		perror("IPC initialization error");
     		IPC::destroyAll();
     		return 1;
     	}
     	
 	if (!LOGGER::init()) {
-    		std::cerr << "LOGGER initialization error \n";
+    		perror("LOGGER initialization error");
     		IPC::destroyAll();
     		return 1;
     	}
@@ -283,7 +300,7 @@ int main() {
 	generateCashier(); // Cashier 2
 	
 	if(pthread_create(&client_gen_thread, NULL, clientGeneratorRoutine, NULL) != 0) {
-		std::cerr << "Failed to create client generator thread\n";
+    		perror("Failed to create client generator thread");
 		return 1;
 	}
 	
@@ -371,17 +388,13 @@ int main() {
 	
 	signal(SIGTERM, SIG_IGN);
 	
-	std::cout << "A";
-	
 	keep_generating = false;
 	SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::PROCESSES_MAX));
 	pthread_join(client_gen_thread, nullptr);
-	std::cout << "B";
 
 	for(pid_t p : active_pids) {
 		kill(p, SIGTERM); 
 	}
-	std::cout << "C";
 
 	for(pid_t p : active_pids) {
 		int status;
@@ -390,7 +403,6 @@ int main() {
 			waitpid(p, NULL, 0);
 		}
 	}
-	std::cout << "D";
 
 	if(pid_baker != -1) {
 		kill(pid_baker, SIGTERM);
@@ -404,7 +416,6 @@ int main() {
 		kill(pid_cashier2, SIGTERM);
 		waitpid(pid_cashier2, NULL, 0);
 	}
-	std::cout << "E";
 	
 	if(data->is_stocktaking) {
 		managerGenerateRaport();
@@ -419,7 +430,7 @@ int main() {
 	
 	bool destroy_success = IPC::destroyAll();
 	if(!destroy_success) {
-		std::cerr << "could not destroy IPC\n";
+    		perror("could not destroy IPC");
 	}
 
 

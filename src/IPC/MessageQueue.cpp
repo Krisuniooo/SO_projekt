@@ -2,13 +2,6 @@
 #include "../../include/Config.h"
 #include "../../include/Utils.h"
 
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <errno.h>
-#include <cerrno>
-#include <fstream>
-
 static int mq_client_id = -1;
 static int mq_register_id = -1;
 
@@ -16,7 +9,7 @@ bool MESSAGEQUEUE::init() {
 	bool setupSuccess = UTILS::setupKeyFile(MESSAGE_QUEUE_KEY_PATH);
 	
 	if(setupSuccess == false) {
-		std::cerr << "Could not create key file\n";
+		perror("Could not create key file");
 		return false;
 	}
 	
@@ -37,14 +30,14 @@ int MESSAGEQUEUE::getClientMQID(int flags) {
 	key_t key = ftok(MESSAGE_QUEUE_KEY_PATH, MESSAGE_QUEUE_KEY);
 
 	if(key == -1) {
-		std::cerr << "ftok Error: " << strerror(errno) << "\n";
+		perror("ftok Error");
 		return -1;
 	}
 	
 	mq_client_id = msgget(key, flags);
 	
 	if(mq_client_id == -1) {
-		std::cerr << "semget Error: " << strerror(errno) << "\n";
+		perror("msgget Error");
 	}
 	
 	return mq_client_id;
@@ -52,12 +45,12 @@ int MESSAGEQUEUE::getClientMQID(int flags) {
 
 bool MESSAGEQUEUE::destroyClientMQ() {
 	if(mq_client_id == -1) {
-		std::cerr << "msgctl error (IPC_RMID): Message queue not initialized\n";
+		perror("msgctl Error (IPC_RMID): Messege queue not initialized");
 		return false;
 	} 
 	
 	if(msgctl(mq_client_id, IPC_RMID, 0) == -1) {
-		std::cerr << "msgctl error (IPC_RMID): " << strerror(errno) << "\n";
+		perror("msgctl Error (IPC_RMID)");
 		return false;
 	}
 	mq_client_id = -1;
