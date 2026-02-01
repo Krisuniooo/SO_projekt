@@ -108,8 +108,14 @@ void handlerSigTerm(int sig) {
 int main() {
 	signal(SIGTERM, handlerSigTerm);
 	
+	sigset_t mask, oldmask;
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGUSR2);
+	sigprocmask(SIG_BLOCK, &mask, &oldmask);
+	
 	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
-	int semid = SEMAPHORE::getID();
+	SEMAPHORE::getID();
 
 	for(int i=0; i< PRODUCTS; i++) {
 		int* id = new int(i);
@@ -117,14 +123,10 @@ int main() {
 		pthread_create(&tid, NULL, bakeProductOnTray, id);
 		trays_thread_ids[i] = tid;
 	}
-
-	while(data->is_running) {
-		sleep(1);	
-		if(data->is_evacuation)
-			break;
-		
-		if(sigterm_handle) 
-			break;
+	
+	while(data->is_running && !data->is_evacuation && !sigterm_handle) {
+		sigsuspend(&oldmask);
+		std::cout << "\tRECIEVED SIGNAL " << data->is_evacuation << "\n";
 	}
 	
 	for(int i=0; i< PRODUCTS; i++) {

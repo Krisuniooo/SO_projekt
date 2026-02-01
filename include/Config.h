@@ -23,14 +23,15 @@
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_LINE_SIZE 512
 
-#define MAX_PROCESSES 15000
+#define MAX_PROCESSES 50
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 500 				// N
-#define OPENING_TIME 10 				// Tp
-#define CLOSING_TIME 100 				// Tk
-#define TOTAL_TIME 120
+#define MAX_CLIENT_INSIDE 20 				// N
+#define RUNNING_TIME 10					// Tp
+#define OPENING_TIME 15 				// Tp + 30
+#define CLOSING_TIME 40 				// Tk
+#define TOTAL_TIME 50
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep
@@ -46,8 +47,8 @@
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
 #define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
-#define CUSTOMER_SPAWN_MIN_TIME 0.005f
-#define CUSTOMER_SPAWN_MAX_TIME 0.0075f
+#define CUSTOMER_SPAWN_MIN_TIME 0.205f
+#define CUSTOMER_SPAWN_MAX_TIME 0.2075f
 
 #define CASHIER_PRODUCT_SCAN_TIME 1.02f
 

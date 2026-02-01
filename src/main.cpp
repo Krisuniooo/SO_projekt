@@ -8,6 +8,7 @@
 #include <vector>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <sys/time.h> 
 
 #include "../include/IPC.h"
 #include "../include/Logger.h"
@@ -17,7 +18,6 @@
 
 static pthread_t client_gen_thread;
 static pthread_t cashier_gen_thread;
-static pthread_t clock_thread;
 std::vector<pid_t> active_pids;
 pthread_mutex_t pid_mutex = PTHREAD_MUTEX_INITIALIZER;
 static bool keep_generating = true;
@@ -28,6 +28,7 @@ static SharedData* data;
 static int clock_time;
 static volatile sig_atomic_t stop_program = 0;
 static int main_pid = -1;
+static struct itimerval tout_val; 
 
 bool checkConfig() {
 	if((static_cast<int>(SemaphoreTypes::SEM_COUNT) - static_cast<int>(SemaphoreTypes::PRODUCTS_BASE) - 1) != PRODUCTS*3) {
@@ -40,6 +41,9 @@ bool checkConfig() {
 
 bool checkOpen() {
 	return (CLOSING_TIME > OPENING_TIME) ? (OPENING_TIME <= clock_time && clock_time < CLOSING_TIME) : (clock_time >= OPENING_TIME || clock_time < CLOSING_TIME);
+}
+bool checkRunning() {
+	return (CLOSING_TIME > RUNNING_TIME) ? (RUNNING_TIME <= clock_time && clock_time < CLOSING_TIME) : (clock_time >= RUNNING_TIME || clock_time < CLOSING_TIME);
 }
 
 void add_pid(pid_t pid) {
@@ -138,28 +142,6 @@ void terminateCashiers() {
 	}
 }
 
-void* cashierGeneratorRoutine(void* arg) {
-	while (keep_generating) {
-		if(data->is_open) {
-			if(pid_cashier2 == -1) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				int customers_inside = data->current_customers_count;
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				
-				if(customers_inside >= (MAX_CLIENT_INSIDE / 2)) {
-					generateCashier();
-				}
-				
-				sleep(1);
-			} else {
-				waitpid(pid_cashier2, NULL, 0);
-				pid_cashier2 = -1;
-			}
-		}
-	}
-	return nullptr;
-}
-
 void managerGenerateRaport() {
 	FILE *file = fopen(MANAGER_RAPORT_PATH, "w");
 	
@@ -187,7 +169,6 @@ void managerGenerateRaport() {
 	}
 	
 	
-	//kasa
 	fprintf(file, "\nCASHIER - STATS:\n");
 	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 		for(int i=0; i<PRODUCTS; i++) {
@@ -199,14 +180,6 @@ void managerGenerateRaport() {
 	
 	
 	fclose(file);
-}
-
-void* clockSimulationThread(void* arg) {
-	while(keep_generating) {
-		usleep(SIMULATION_MINUTE);
-		clock_time = (clock_time + 1) % static_cast<int>(TOTAL_TIME);
-	}
-	return nullptr;
 }
 
 
@@ -237,6 +210,12 @@ void handleEvacuation(int sig) {
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	}
 }
+
+void alarm_wakeup(int i) {
+	clock_time = (clock_time + 1) % static_cast<int>(TOTAL_TIME);
+	signal(SIGALRM,alarm_wakeup);
+	setitimer(ITIMER_REAL, &tout_val,0);
+} 
 
 void resetTrays() {
 	for(int i = 0; i<PRODUCTS; i++) {
@@ -284,24 +263,24 @@ int main() {
     	signal(SIGUSR1, handleStocktaking);
     	signal(SIGUSR2, handleEvacuation);
     	
+    	clock_time = RUNNING_TIME; 
+    	
+	tout_val.it_interval.tv_sec = 1;
+	tout_val.it_interval.tv_usec = 0;
+	tout_val.it_value.tv_sec = 1; /* set timer for "INTERVAL seconds */
+	tout_val.it_value.tv_usec = 0;
+	setitimer(ITIMER_REAL, &tout_val,0);
+
+
+	signal(SIGALRM,	alarm_wakeup);
+    	
     	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
-    	data->is_running = true;
+	
+   	data->is_running = true;
 	
 	generateBaker();
 	generateCashier(); // Cashier 1
 	generateCashier(); // Cashier 2
-	
-	if(pthread_create(&clock_thread, NULL, clockSimulationThread, NULL) != 0) {
-		std::cerr << "Failed to create clock thread\n";
-		return 1;
-	}
-	
-	/*if(pthread_create(&cashier_gen_thread, NULL, cashierGeneratorRoutine, NULL) != 0) {
-		std::cerr << "Failed to create cashier generator thread\n";
-		return 1;
-	}*/
-	clock_time = OPENING_TIME; 
-	data->is_open = true;
 	
 	if(pthread_create(&client_gen_thread, NULL, clientGeneratorRoutine, NULL) != 0) {
 		std::cerr << "Failed to create client generator thread\n";
@@ -309,64 +288,85 @@ int main() {
 	}
 	
 	while(!stop_program) {
-		if(!checkOpen() && data->is_open) {
-			data->is_open = false;
-			std::cout << "A\n";
-			
-			std::cout << data->current_customers_count << "\n";
-			if(data->current_customers_count > 0) {
-				SIGNALS::wait(SIGRTMIN + 2);
-			}
-			std::cout << data->current_customers_count << "\n";
-			
-			std::cout << "B\n";
-			data->is_running = false;
-			
-			for(int i=0; i<PRODUCTS; i++) {
-				SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i)); // wake up baker if needed
-			}
-			
-			terminateBaker();
-			terminateCashiers();
-			
-			std::cout << "C\n";
-			
-			resetTrays(); // reset broken semaphores from last for loop
-		}
-		
-		if(!data->is_open && data->is_stocktaking && (data->current_customers_count <=0)) {
-			std::cout << "GENERATING RAPOR\n";
-			managerGenerateRaport();
-			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
-				data->is_stocktaking = false;
-			
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+	std::cout << "EWAKUACJA: " << data->is_evacuation << "\nDZIALA: " << data->is_running << "\nOTWARTE: " << data->is_open << "\nTIME: " << clock_time << "\n";
+		if(data->is_evacuation) {
+			if(data->is_running || data->is_open) {
+				std::cout << "EVACUATION IN PROGRESS - Terminating workers\n";
+				data->is_open = false;
+				data->is_running = false;
+				
+				for(int i=0; i<PRODUCTS; i++) {
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i));
+				}
+				
+				terminateBaker();
+				terminateCashiers();
+				
+				resetTrays();
 			}
 		}
-		if(checkOpen() && !data->is_open) {
-			
-			data->is_running = true;
-			data->is_open = true;
-		
-			generateBaker();
-			generateCashier();
-			generateCashier();
-		}
-		
-		/*if(checkOpen() && data->is_open) {
-			if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				data->second_register_active = false;
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-			} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
-				SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				data->second_register_active = true;
-				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-				std::cout << "SECOND REGISTER STARTS RUNNING\n";
+		else {
+			if(!checkOpen() && data->is_open) {
+				data->is_open = false; // close for clients
+				std::cout << "A\n";
+				
+				std::cout << data->current_customers_count << "\n";
+				while(data->current_customers_count > 0) {
+					SIGNALS::wait(SIGRTMIN + 2); // wait for last client
+				}
+				std::cout << data->current_customers_count << "\n";
+				
+				std::cout << "B\n";
+				data->is_running = false; // close for employees
+				
+				for(int i=0; i<PRODUCTS; i++) {
+					SEMAPHORE::unlock(UTILS::SEM_INDEX_SLOTS(i)); // wake up baker if needed
+				}
+				
+				terminateBaker();
+				terminateCashiers();
+				
+				std::cout << "C\n";
+				
+				resetTrays(); // reset broken semaphores from last for loop
 			}
-		}*/
-		sleep(1);
-		
+			
+			if(!data->is_running && data->is_stocktaking) {
+				std::cout << "GENERATING RAPOR\n";
+				managerGenerateRaport();
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
+					data->is_stocktaking = false;
+				
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				}
+			}
+			
+			if(checkRunning() && !data->is_running) {
+				data->is_running = true;
+			
+				generateBaker();
+				generateCashier();
+				generateCashier();
+			}
+			
+			if(checkOpen() && !data->is_open) {
+				data->is_open = true;
+			}
+			
+			if(checkOpen() && data->is_open) {
+				if(data->second_register_active && (data->current_customers_count < (MAX_CLIENT_INSIDE / 2))) {
+					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					data->second_register_active = false;
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+				} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
+					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					data->second_register_active = true;
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+					std::cout << "SECOND REGISTER STARTS RUNNING\n";
+				}
+			}
+		}
+		pause(); // wait for any signal to continue
 	}
 	
 	signal(SIGTERM, SIG_IGN);
@@ -414,9 +414,6 @@ int main() {
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 		}
 	}
-	std::cout << "F";
-	pthread_join(clock_thread, nullptr);
-	std::cout << "G";
 	
 	SHAREDMEMORY::detach();
 	
@@ -424,7 +421,6 @@ int main() {
 	if(!destroy_success) {
 		std::cerr << "could not destroy IPC\n";
 	}
-	std::cout << "H";
 
 
 	return 0;

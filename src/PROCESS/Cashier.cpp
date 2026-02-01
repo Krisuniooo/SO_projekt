@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
 	
 	LOGGER::log("Register " + std::to_string(cashier_id) + " process starts\n");
 	
-	while(data->is_open) {
+	while(data->is_running) {
 		
 		if(msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, 0) == -1) {
 			if (errno == EINTR) {
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 			
-			usleep(350000);
+			//usleep(350000);
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
@@ -80,13 +80,16 @@ int main(int argc, char *argv[]) {
 				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
 				
 				my_msg.mtype = my_msg.client;
-				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
+					if(errno == EINTR) {
+						break;
+					}
 					std::cerr << "could not send shopping list to cashier\n";
 				}
 				
-				LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
-				SIGNALS::send(my_msg.client, SIGRTMIN + 1);
-				LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
+				//LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
+				//SIGNALS::send(my_msg.client, SIGRTMIN + 1);
+				//LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
 				
 				
 				
@@ -104,7 +107,9 @@ int main(int argc, char *argv[]) {
 		while (msgrcv(mq_register_id, &my_msg, sizeof(my_msg) - sizeof(long), cashier_id, IPC_NOWAIT) != -1) {
 			LOGGER::log("Register " + std::to_string(cashier_id) + " serves the customer " + std::to_string(my_msg.client) + "\n");
 						
-			usleep(350000);
+			//usleep(350000);
+			
+			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " locks mutex for " + std::to_string(my_msg.client) + "\n");
@@ -136,24 +141,22 @@ int main(int argc, char *argv[]) {
 				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
 				
 				my_msg.mtype = my_msg.client;
-				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
 					std::cerr << "could not send shopping list to cashier\n";
+					if(errno == EINTR) {
+						break;
+					}
 				}
 				
-				LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
-				SIGNALS::send(my_msg.client, SIGRTMIN + 1);
-				LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
+				//LOGGER::log("Register sent checkout to " + std::to_string(my_msg.mtype) + " and now is trying to raise signal\n");
+				//SIGNALS::send(my_msg.client, SIGRTMIN + 1);
+				//LOGGER::log("Register sent signal to " + std::to_string(my_msg.mtype) + "\n");
 			}
 			LOGGER::log("Register " + std::to_string(cashier_id) + " finished scanning products " + std::to_string(my_msg.client) + "\n");
 		}
 	}
 	
-	if(cashier_id > 1) {
-		std::cout << "CLOSING REGISTER " << cashier_id << "\n";
-		SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-		data->second_register_active = false;
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-	}
+	LOGGER::log("Register " + std::to_string(cashier_id) + " finished job\n");
 	
 	file.close();
 	SHAREDMEMORY::detach();

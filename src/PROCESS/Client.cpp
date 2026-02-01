@@ -77,24 +77,26 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 			
 	if(data->second_register_active) {
+		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 		msg.mtype = UTILS::getRandom(1, 2);
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
-		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
 			std::cerr << "could not send shopping list to cashier\n";
+			return;
 		}
-		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 	} else {
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
-		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0)) {
+		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
 			std::cerr << "could not send shopping list to cashier\n";
+			return;
 		}
 	}
-	LOGGER::log("Client " + getClientPIDstring() + " is waiting for signal from register\n");
-	SIGNALS::wait(SIGRTMIN + 1);
-	LOGGER::log("Client " + getClientPIDstring() + " recieved signal from register\n");
+	//LOGGER::log("Client " + getClientPIDstring() + " is waiting for signal from register\n");
+	//SIGNALS::wait(SIGRTMIN + 1);
+	//LOGGER::log("Client " + getClientPIDstring() + " recieved signal from register\n");
 	if(data->is_evacuation) {
 		return;
 	}
