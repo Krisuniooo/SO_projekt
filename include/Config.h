@@ -48,9 +48,9 @@
 
 #define MAX_CLIENT_INSIDE 20 				// N
 #define RUNNING_TIME 30					// Tp
-#define OPENING_TIME 40 				// Tp + x
-#define CLOSING_TIME 70 				// Tk
-#define TOTAL_TIME 144					// T
+#define OPENING_TIME 32 				// Tp + x
+#define CLOSING_TIME 250 				// Tk
+#define TOTAL_TIME 288					// T
 
 #define SIMULATION_MINUTE 1000000			// simulation minute in usleep
 #define SIMULATION_HOUR (60 * SIMULATION_MINUTE)	// simulation hour in usleep

@@ -16,12 +16,7 @@ int main(int argc, char *argv[]) {
 	
 	ReceiptMessage my_msg;
 	
-	if(!UTILS::setupKeyFile(RECEIPT_PATH)) {
-		perror("Could not create Receipt file");
-		return 1;
-	}
-	
-	FILE* file = fopen(RECEIPT_PATH, "w");
+	FILE* file = fopen(RECEIPT_PATH, "a");
 	if(!file) {
 		perror("Could not open Receipt file");
 		return 1;
@@ -52,6 +47,8 @@ int main(int argc, char *argv[]) {
 			
 			LOGGER::log("Register " + std::to_string(cashier_id) + " starts scanning products " + std::to_string(my_msg.client) + "\n");
 			
+			std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+			
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX))) {
 				LOGGER::log("Register " + std::to_string(cashier_id) + " locks mutex for " + std::to_string(my_msg.client) + "\n");
 			
@@ -76,6 +73,7 @@ int main(int argc, char *argv[]) {
 				fprintf(file, "==================================\n");
 				fprintf(file, "TOTAL: %.2f$", total);
 				fprintf(file, "\n==================================\n");
+				fflush(file);
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
@@ -137,6 +135,8 @@ int main(int argc, char *argv[]) {
 				fprintf(file, "TOTAL: %.2f$", total);
 				fprintf(file, "\n==================================\n");
 				
+				fflush(file);
+				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::RECEIPT_MUTEX));
 				
 				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 				ReceiptConfirmation conf_msg;
 				conf_msg.mtype = my_msg.client;
 				conf_msg.success = 1;
-				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptConfirmation) - sizeof(long), 0) == -1) {
+				if(msgsnd(mq_client_id, &conf_msg, sizeof(ReceiptConfirmation) - sizeof(long), 0) == -1) {
 					if(errno == EINTR) {
 						break;
 					}

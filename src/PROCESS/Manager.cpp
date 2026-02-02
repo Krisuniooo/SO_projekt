@@ -204,7 +204,7 @@ void generateClient() {
     		exit(1);
     	} else if(pid == 0) {
     		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-			printf("Generating client - Current clients inside: %d, Second register open: %d\n", data->current_customers_count, data->second_register_active);	
+			printf("Generating client - Is Open: %d, Current clients inside: %d, Second register open: %d\n", data->is_open, data->current_customers_count, data->second_register_active);	
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 		}
     	

@@ -28,6 +28,7 @@ void LOGGER::log(const std::string& message) {
 		char ts[32];
 		UTILS::getTimestamp(ts, sizeof(ts));
 		fprintf(file, "[%s] %s", ts, message.c_str());
+		fflush(file);
 		
 		fclose(file);
 		

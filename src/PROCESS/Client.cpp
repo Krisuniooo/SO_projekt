@@ -76,7 +76,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			data->register_queue_size[0]++;
 		}
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
-		
+		LOGGER::log("Client " + getClientPIDstring() + " joins queue to cashier " + std::to_string(msg.mtype) + " at " + std::to_string(data->register_queue_size[msg.mtype - 1]) + " place\n");
 		
 		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
@@ -87,7 +87,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 		data->register_queue_size[0]++;
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 		
-		LOGGER::log("Client " + getClientPIDstring() + " gives product list to " + std::to_string(msg.mtype) + "\n");
+		LOGGER::log("Client " + getClientPIDstring() + " joins queue to cashier " + std::to_string(msg.mtype) + " at " + std::to_string(data->register_queue_size[0]) + " place\n");
 		if(msgsnd(mq_register_id, &msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
 			perror("could not send shopping list to cashier");
 			return;
@@ -102,7 +102,10 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	bool recieved_checkout = false;
 	while(true) {
 		if(data->is_evacuation || sig_term) {
-			printf("Evacuation pending - client runs away");
+			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+				printf("Evacuation pending - client runs away");
+				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+			}
 			LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
 			break;
 		}
@@ -115,7 +118,10 @@ void handleReceipt(std::map<int, int> shopping_list) {
 		} else {
 			if(errno == EINTR) {
 				if(data->is_evacuation || sig_term) {
-					printf("Evacuation pending - client runs away\n");
+					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+						printf("Evacuation pending - client runs away");
+						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+					}
 					LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
 					break;
 				}
@@ -153,6 +159,8 @@ int main() {
 	mq_client_id = MESSAGEQUEUE::getClientMQID(0400);
 	
 	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
+	
+	LOGGER::log("Client " + getClientPIDstring() + " tries to enter the shop - currently clients inside: " + std::to_string(MAX_CLIENT_INSIDE - SEMAPHORE::getValue(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE))) + "/" + std::to_string(MAX_CLIENT_INSIDE) + "\n");
 	
 	if (!SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::CLIENTS_INSIDE))) {
 		LOGGER::log("Client " + getClientPIDstring() + " could not enter shop - semaphore error\n");
