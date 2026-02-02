@@ -80,10 +80,7 @@ void* bakeProductOnTray(void* arg) {
 		}
 		
 		int time = UTILS::getRandom(BAKE_MIN_TIME, BAKE_MAX_TIME);
-		for (int i = 0; i < 100; ++i) {
-			if (!data->is_running || data->is_evacuation) break;
-			usleep((time/100.0) * SIMULATION_MINUTE);
-		}
+		usleep(time * SIMULATION_MINUTE);
 	}
 	
 	return nullptr;

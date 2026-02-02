@@ -103,7 +103,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	while(true) {
 		if(data->is_evacuation || sig_term) {
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-				printf("Evacuation pending - client runs away");
+				printf("Evacuation pending - client runs away\n");
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 			}
 			LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
@@ -119,7 +119,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			if(errno == EINTR) {
 				if(data->is_evacuation || sig_term) {
 					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-						printf("Evacuation pending - client runs away");
+						printf("Evacuation pending - client runs away\n");
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 					}
 					LOGGER::log("Client " + getClientPIDstring() + " skips waiting for checkout\n");
