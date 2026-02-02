@@ -74,6 +74,12 @@
 #define PRODUCTS 10
 #define MAX_STOCK 256
 
+#define RESET_COLOR "\033[0m"
+#define CLIENT_COLOR "\033[0;33m" // gold
+#define CASHIER_COLOR "\033[0;31m" // red
+#define BAKER_COLOR "\033[0;36m" // cyan
+#define MANAGER_COLOR "\033[0;32m" // green
+
 struct ProductConfig {
 	std::string label;
 	float price;

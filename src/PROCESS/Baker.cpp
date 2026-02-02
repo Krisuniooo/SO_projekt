@@ -65,7 +65,7 @@ void* bakeProductOnTray(void* arg) {
 						
 						LOGGER::log("Baker added " + Products_base[id_product].label + " to the tray\n");
 						if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-							printf("Added %s, new value: %d\n", (Products_base[id_product].label).c_str(), SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)));
+							printf(BAKER_COLOR"Added %s"RESET_COLOR", new value: %d\n", (Products_base[id_product].label).c_str(), SEMAPHORE::getValue(UTILS::SEM_INDEX_COUNT(id_product)));
 							SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 						}
 						

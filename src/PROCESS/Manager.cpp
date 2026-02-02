@@ -176,7 +176,7 @@ void generateBaker() {
 			exit(1);
 		} else if(pid == 0) {
 			if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-				printf("Generating Baker\n");
+				printf(MANAGER_COLOR"Generating Baker"RESET_COLOR"\n");
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 			}
@@ -204,7 +204,7 @@ void generateClient() {
     		exit(1);
     	} else if(pid == 0) {
     		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-			printf("Generating client - Is Open: %d, Current clients inside: %d, Second register open: %d\n", data->is_open, data->current_customers_count, data->second_register_active);	
+			printf(MANAGER_COLOR"Generating client"RESET_COLOR" - Is Open: %d, Current clients inside: %d, Second register open: %d\n", data->is_open, data->current_customers_count, data->second_register_active);	
 			SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 		}
     	
@@ -235,7 +235,7 @@ void generateCashier() {
 	    		exit(1);
 	    	} else if(pid == 0) {
 	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-				printf("Generating Cashier 1\n");
+				printf(MANAGER_COLOR"Generating Cashier 1"RESET_COLOR"\n");
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 			}
@@ -254,7 +254,7 @@ void generateCashier() {
 			exit(1);
 		} else if(pid == 0) {
 	    		if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-				printf("Generating Cashier 2\n");
+				printf(MANAGER_COLOR"Generating Cashier 2"RESET_COLOR"\n");
 				
 				SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 			}
@@ -288,8 +288,8 @@ void handleKillSignals(int sig) {
 		exit(0);
 	}
 	if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-		printf("TRYING TO KILL\n");
-		printf("CHANGED FLAGS\n");
+		printf(MANAGER_COLOR"TRYING TO KILL"RESET_COLOR"\n");
+		printf(MANAGER_COLOR"CHANGED FLAGS"RESET_COLOR"\n");
 				
 		SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 	}
@@ -395,7 +395,7 @@ int main() {
 		if(data->is_evacuation) {
 			if(data->is_running || data->is_open) {
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-					printf("EVACUATION IN PROGRESS\n");
+					printf(MANAGER_COLOR"EVACUATION IN PROGRESS"RESET_COLOR"\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
     				LOGGER::log("EVACUATION IN PROGRESS\n");
@@ -432,7 +432,7 @@ int main() {
 			
 			if(!data->is_running && data->is_stocktaking) {
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-					printf("GENERATING RAPORT\n");
+					printf(MANAGER_COLOR"GENERATING RAPORT"RESET_COLOR"\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
 				LOGGER::log("GENERATING RAPORT\n");
@@ -446,7 +446,7 @@ int main() {
 			
 			if(checkRunning() && !data->is_running) {
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-					printf("SHOP STARTS RUNNING\n");
+					printf(MANAGER_COLOR"SHOP STARTS RUNNING"RESET_COLOR"\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
     				LOGGER::log("SHOP STARTS RUNNING\n");
@@ -459,7 +459,7 @@ int main() {
 			
 			if(checkOpen() && !data->is_open) {
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-					printf("SHOP IS NOW OPEN\n");
+					printf(MANAGER_COLOR"SHOP IS NOW OPEN"RESET_COLOR"\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
     				LOGGER::log("OPENING SHOP\n");
@@ -477,7 +477,7 @@ int main() {
 					data->second_register_active = true;
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
-						printf("SECOND REGISTER STARTS RUNNING\n");
+						printf(MANAGER_COLOR"SECOND REGISTER STARTS RUNNING"RESET_COLOR"\n");
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 					}
     					LOGGER::log("SECOND REGISTER STARTS RUNNING\n");
