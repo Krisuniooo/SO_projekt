@@ -54,11 +54,11 @@ foo@bar:~$ ./run.sh
 #### Tworzenie i obsługa plików
 - [Tworzenie plików](https://github.com/Krisuniooo/SO_projekt/blob/9ae1b39fe100dad9cc8a22561113f18a48eae500/src/Utils.cpp#L4-L12)
 - [Otwieranie plików](https://github.com/Krisuniooo/SO_projekt/blob/9ae1b39fe100dad9cc8a22561113f18a48eae500/src/PROCESS/Cashier.cpp#L24-L28)
-- [Zapisywanie do plików](https://github.com/Krisuniooo/SO_projekt/blob/9ae1b39fe100dad9cc8a22561113f18a48eae500/src/PROCESS/Cashier.cpp#L55-L80)
+- [Zapisywanie do plików](https://github.com/Krisuniooo/SO_projekt/blob/e488c0538f2b9f30c145ba7c099a5d5de8310ee6/src/PROCESS/Cashier.cpp#L50-L76)
 - [Zamykanie plików](https://github.com/Krisuniooo/SO_projekt/blob/9ae1b39fe100dad9cc8a22561113f18a48eae500/src/PROCESS/Cashier.cpp#L166)
 
 #### Obsługa procesów
-- [Pełny przykład (fork, exec i exit)]((https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Manager.cpp#L123))
+- [Pełny przykład (fork, exec i exit)](https://github.com/Krisuniooo/SO_projekt/blob/e488c0538f2b9f30c145ba7c099a5d5de8310ee6/src/PROCESS/Manager.cpp#L170-L190)
 #### Obsługa wątków
 - [Tworzenie wątku](https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Baker.cpp#L108-L113)
 - [Czekanie na zakończenie wątku](https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Baker.cpp#L119-L122)
@@ -76,6 +76,7 @@ foo@bar:~$ ./run.sh
 - [przykład](https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Client.cpp#L146-L151)
 #### Kolejki komunikatów
 - [customowe library](https://github.com/Krisuniooo/SO_projekt/blob/main/src/IPC/MessageQueue.cpp)
+- [pobieranie id kolejki z uprawnieniami](https://github.com/Krisuniooo/SO_projekt/blob/e488c0538f2b9f30c145ba7c099a5d5de8310ee6/src/PROCESS/Cashier.cpp#L14-L15)
 - [msgsnd](https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Cashier.cpp#L143-L148)
 - [msgrcv](https://github.com/Krisuniooo/SO_projekt/blob/fcc070e562912c5e0e01d08baf76c3edfc62aa60/src/PROCESS/Cashier.cpp#L34-L47)
 
@@ -141,6 +142,7 @@ Sprawdzenie dla pierwszych trzech produktów:
 - WZ-ka: 3848 sprzedanych + 16 wyrzuconych + 84 na podajniku = 3948 (tyle ile wyprodukowano) ✅
 - Kremowka: 4009 sprzedanych + 17 wyrzuconych + 75 na podajniku = 4101 (tyle ile wyprodukowano) ✅
 - Piegusek: 3733 sprzedanych + 16 wyrzuconych + 66 na podajniku = 3815 (tyle ile wyprodukowano) ✅
+
 Test przeprowadzony prawidłowo ✅
 ### 2. Test sprawdzający działanie sygnału ewakuacji
 Wywołanie tego testu następuje poprzez wysłanie sygnału SIGUSR2 do kierownika ciastkarni. Użycie:
@@ -315,6 +317,7 @@ Do wykonania tego testu musimy odpowiednio przygotować plik konfiguracyjny (con
 #define CUSTOMER_SPAWN_MAX_TIME 0.000f
 ```
 ![obraz](https://i.imgur.com/bQnvW3m.png)
+
 [link alternatywny do obrazu](https://i.imgur.com/bQnvW3m.png)
 Na screenie z htopa widać, że utworzono 5000 procesów, które usypiają na semaforze, dzięki czemu pomimo mamy niskie zużycie procesora ✅
 ### 4. Test sprawdzający czy klient ominie tacke, jezeli nie ma produktu
@@ -358,6 +361,19 @@ TOTAL: 16.50$
 ==================================
 ```
 Kasjer poprawnie skasował jedyne dwa produkty, które chciał klient i mógł wziąć klient ✅
+### 5. Test sprawdzający prawidłowe czyszczenie zasobów
+Test polega na przerwaniu działania programu w dowolnym momencie (np. poprzez SIGINT) i sprawdzeniu czy struktury IPC sie wyczyscily 
+```console
+foo@bar:~$ ipcs
+```
+Oczekiwany wynik:
+![image](https://i.imgur.com/ugE5Y4K.png)
+
+[alternatywny link](https://i.imgur.com/ugE5Y4K.png)
+Struktury zostały wyczyszczone poprawnie ✅
+
+## Napotkane problemy
+- Zastosowano Ring na pamięci dzielonej zamiast kolejek fifo - kolejka mkfifo generowała różne problemy w systemie ubuntu, takie jak np. ignorowanie i przekraczanie limitu PIPE_BUF. Ponadto z powodów natury mkfifo file descriptory się zamykały w przypadku braku otwartego file descriptora z drugiej strony (np. wszyscy klienci zostali obsłużeni, a cykl dnia dalej trwa), natomiast proste rozwiązania jak postawienie strażnika psuły optymalizacje i zabierały sens rozwiązaniom nieblokującym - teoretycznie dałoby się to rozwiązać, jednak dużo prostszym podejściem było zastosowanie ringa na shared memory opartego na 2 dodatkowych semaforach dla każdego produktu.
 ## Temat 15 – Ciastkarnia
 Ciastkarnia produkuje P różnych produktów (P>10), każdy w innej cenie i na bieżąco sprzedaje je w samoobsługowym sklepie firmowym. Produkty bezpośrednio po wypieku (losowa liczba sztuk różnych produktów co określony czas) trafiają do sprzedaży w sklepie – każdy rodzaj produktu Pi na oddzielny podajnik. Każdy podajnik może przetransportować w danej chwili maksymalnie Ki sztuk pieczywa. Ciastka z danego podajnika muszą być pobieranie w sklepie dokładnie w takiej kolejności jak zostało położone na tym podajniku w piekarni. Zasady działania ciastkarni przyjęte przez kierownika są następujące: 
 -  Ciastkarnia jest czynna w godzinach od Tp do Tk; 
