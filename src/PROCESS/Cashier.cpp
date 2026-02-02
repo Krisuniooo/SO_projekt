@@ -11,8 +11,8 @@ int main(int argc, char *argv[]) {
 	
 	SharedData* data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	SEMAPHORE::getID();
-	int mq_register_id = MESSAGEQUEUE::getRegisterID();
-	int mq_client_id = MESSAGEQUEUE::getClientMQID();
+	int mq_register_id = MESSAGEQUEUE::getRegisterID(0400);
+	int mq_client_id = MESSAGEQUEUE::getClientMQID(0200);
 	
 	ReceiptMessage my_msg;
 	
@@ -81,8 +81,10 @@ int main(int argc, char *argv[]) {
 				
 				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
 				
-				my_msg.mtype = my_msg.client;
-				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
+				ReceiptConfirmation conf_msg;
+				conf_msg.mtype = my_msg.client;
+				conf_msg.success = 1;
+				if(msgsnd(mq_client_id, &conf_msg, sizeof(ReceiptConfirmation) - sizeof(long), 0) == -1) {
 					if(errno == EINTR) {
 						break;
 					}
@@ -139,8 +141,10 @@ int main(int argc, char *argv[]) {
 				
 				LOGGER::log("Register sends checkout to " + std::to_string(my_msg.mtype) + "\n");
 				
-				my_msg.mtype = my_msg.client;
-				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptMessage) - sizeof(long), 0) == -1) {
+				ReceiptConfirmation conf_msg;
+				conf_msg.mtype = my_msg.client;
+				conf_msg.success = 1;
+				if(msgsnd(mq_client_id, &my_msg, sizeof(ReceiptConfirmation) - sizeof(long), 0) == -1) {
 					if(errno == EINTR) {
 						break;
 					}

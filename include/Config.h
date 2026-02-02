@@ -42,11 +42,11 @@
 #define RECEIPT_PATH "data/receipt.log"
 #define LOG_MAX_SIZE 512
 
-#define MAX_PROCESSES 10000
+#define MAX_PROCESSES 50
 
 #define DEBUG_MESSAGES 0
 
-#define MAX_CLIENT_INSIDE 1000 				// N
+#define MAX_CLIENT_INSIDE 20 				// N
 #define RUNNING_TIME 30					// Tp
 #define OPENING_TIME 40 				// Tp + x
 #define CLOSING_TIME 70 				// Tk
@@ -66,8 +66,8 @@
 #define CUSTOMER_MAX_PRODUCT_DEMAND 4
 #define CUSTOMER_PRODUCT_BUY_TIME 0.25f
 
-#define CUSTOMER_SPAWN_MIN_TIME 0.000f
-#define CUSTOMER_SPAWN_MAX_TIME 0.000f
+#define CUSTOMER_SPAWN_MIN_TIME 0.010f
+#define CUSTOMER_SPAWN_MAX_TIME 0.010f
 
 #define CASHIER_PRODUCT_SCAN_TIME 1.02f
 
@@ -191,6 +191,11 @@ struct ReceiptMessage {
 	long mtype;
 	pid_t client;
 	int counts[PRODUCTS];
+};
+
+struct ReceiptConfirmation {
+	long mtype;
+	short success;
 };
 
 struct ShoppingList {

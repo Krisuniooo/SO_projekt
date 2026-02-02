@@ -98,7 +98,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 	}
 			
 	LOGGER::log("Client " + getClientPIDstring() + " is waiting for checkout\n");
-	ReceiptMessage msg_rcv;
+	ReceiptConfirmation msg_rcv;
 	bool recieved_checkout = false;
 	while(true) {
 		if(data->is_evacuation || sig_term) {
@@ -107,7 +107,7 @@ void handleReceipt(std::map<int, int> shopping_list) {
 			break;
 		}
 	
-		ssize_t recieve = msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptMessage) - sizeof(long), getpid(), 0);
+		ssize_t recieve = msgrcv(mq_client_id, &msg_rcv, sizeof(ReceiptConfirmation) - sizeof(long), getpid(), 0);
 		
 		if(recieve != -1) {
 			recieved_checkout = true;
@@ -149,8 +149,8 @@ int main() {
 	
 	data = static_cast<SharedData*>(SHAREDMEMORY::attach());
 	SEMAPHORE::getID();
-	mq_register_id = MESSAGEQUEUE::getRegisterID();
-	mq_client_id = MESSAGEQUEUE::getClientMQID();
+	mq_register_id = MESSAGEQUEUE::getRegisterID(0200);
+	mq_client_id = MESSAGEQUEUE::getClientMQID(0400);
 	
 	std::vector<ShoppingList> shopping_list_demand = generateShoppingList();
 	

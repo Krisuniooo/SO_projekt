@@ -398,6 +398,7 @@ int main() {
 					printf("EVACUATION IN PROGRESS\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
+    				LOGGER::log("EVACUATION IN PROGRESS\n");
 				data->is_open = false;
 				data->is_running = false;
 				
@@ -411,6 +412,7 @@ int main() {
 		else {
 			if(!checkOpen() && data->is_open) {
 				data->is_open = false; // close for clients
+				LOGGER::log("CLOSING SHOP\n");
 				
 				while(data->current_customers_count > 0) {
 					SIGNALS::wait(SIGRTMIN + 2); // wait for last client
@@ -433,6 +435,7 @@ int main() {
 					printf("GENERATING RAPORT\n");
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 				}
+				LOGGER::log("GENERATING RAPORT\n");
 				managerGenerateRaport();
 				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX))) {
 					data->is_stocktaking = false;
@@ -442,6 +445,11 @@ int main() {
 			}
 			
 			if(checkRunning() && !data->is_running) {
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+					printf("SHOP STARTS RUNNING\n");
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+				}
+    				LOGGER::log("SHOP STARTS RUNNING\n");
 				data->is_running = true;
 			
 				generateBaker();
@@ -450,6 +458,11 @@ int main() {
 			}
 			
 			if(checkOpen() && !data->is_open) {
+				if(SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::COUT_MUTEX))) {
+					printf("SHOP IS NOW OPEN\n");
+					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
+				}
+    				LOGGER::log("OPENING SHOP\n");
 				data->is_open = true;
 			}
 			
@@ -458,6 +471,7 @@ int main() {
 					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					data->second_register_active = false;
 					SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
+    					LOGGER::log("SECOND REGISTER STOPS RUNNING\n");
 				} else if(!data->second_register_active && (data->current_customers_count >= (MAX_CLIENT_INSIDE / 2))) {
 					SEMAPHORE::lock(static_cast<int>(SemaphoreTypes::SHARED_DATA_MUTEX));
 					data->second_register_active = true;
@@ -466,6 +480,7 @@ int main() {
 						printf("SECOND REGISTER STARTS RUNNING\n");
 						SEMAPHORE::unlock(static_cast<int>(SemaphoreTypes::COUT_MUTEX));
 					}
+    					LOGGER::log("SECOND REGISTER STARTS RUNNING\n");
 				}
 			}
 		}
