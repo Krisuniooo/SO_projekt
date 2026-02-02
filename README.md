@@ -374,6 +374,69 @@ Struktury zostały wyczyszczone poprawnie ✅
 
 ## Napotkane problemy
 - Zastosowano Ring na pamięci dzielonej zamiast kolejek fifo - kolejka mkfifo generowała różne problemy w systemie ubuntu, takie jak np. ignorowanie i przekraczanie limitu PIPE_BUF. Ponadto z powodów natury mkfifo file descriptory się zamykały w przypadku braku otwartego file descriptora z drugiej strony (np. wszyscy klienci zostali obsłużeni, a cykl dnia dalej trwa), natomiast proste rozwiązania jak postawienie strażnika psuły optymalizacje i zabierały sens rozwiązaniom nieblokującym - teoretycznie dałoby się to rozwiązać, jednak dużo prostszym podejściem było zastosowanie ringa na shared memory opartego na 2 dodatkowych semaforach dla każdego produktu.
+## Kluczowe pseudokody
+- Dodanie produktu przez piekarza
+```
+LOSUJ liczba_wypieczonego_produktu
+DLA KAŻDEGO liczba_wypieczonego_produktu ZRÓB:
+	CZEKAJ I ZABLOKUJ WOLNE MIEJSCA PRODUKTU
+
+	JEŚLI ewakuacja:
+		ODBLOKUJ wolne_miejsca_produktu
+		WYJDZ
+
+	CZEKAJ I ZABLOKUJ TACE
+
+	JEŚLI ewakuacja
+		ODBLOKUJ TACE
+		ODBLOKUJ wolne_miejsca_produktu
+		WYJDZ
+
+	CZEKAJ I ZABLOKUJ DANE DZIELONE
+	
+	JEŚLI ewakuacja
+		ODBLOKUJ DANE DZIELONE
+		ODBLOKUJ TACE
+		ODBLOKUJ wolne_miejsca_produktu
+		WYJDZ
+
+	UTWORZ PRODUKT I NADAJ ATRYBUTY
+	DODAJ PRODUKT NA KONIEC
+	ZAKTUALIZUJ tail TACY I liczniki
+
+	ODBLOKUJ DANE DZIELONE
+	ODBLOKUJ TACE
+	ODBLOKUJ LICZBE PRODUKTOW	
+
+	WYSLIJ LOG
+```
+
+Zabranie produktu przez klienta
+```
+DLA KAŻDEGO produkt_lista_zakupów ZRÓB:
+	DLA KAŻDEGO wymagana_liczba_sztuk ZRÓB:
+		WYŚLIJ LOG
+
+		SPRÓBUJ ZABLOKOWAĆ LICZBĘ PRODUKTÓW BEZ CZEKANIA
+		JEŚLI sukces
+			WYŚLIJ LOG
+			CZEKAJ I ZABLOKUJ TACE
+
+			WYŚLIJ LOG
+			CZEKAJ I ZABLOKUJ DANE DZIELONE
+
+			USUŃ PRODUKT Z POCZATKU
+			ZAKTUALIZUJ head TACY I liczniki
+
+			ODBLOKUJ DANE DZIELONE
+			ODBLOKUJ TACE
+			ODBLOKUJ ZABLOKUJ WOLNE MIEJSCA PRODUKTU
+
+			ZWIĘKSZ liczba_zabranych_produktow
+		W PRZECIWNYM RAZIE:
+			WYŚLIJ LOG
+			PRZERWIJ PĘTLE
+```
 ## Temat 15 – Ciastkarnia
 Ciastkarnia produkuje P różnych produktów (P>10), każdy w innej cenie i na bieżąco sprzedaje je w samoobsługowym sklepie firmowym. Produkty bezpośrednio po wypieku (losowa liczba sztuk różnych produktów co określony czas) trafiają do sprzedaży w sklepie – każdy rodzaj produktu Pi na oddzielny podajnik. Każdy podajnik może przetransportować w danej chwili maksymalnie Ki sztuk pieczywa. Ciastka z danego podajnika muszą być pobieranie w sklepie dokładnie w takiej kolejności jak zostało położone na tym podajniku w piekarni. Zasady działania ciastkarni przyjęte przez kierownika są następujące: 
 -  Ciastkarnia jest czynna w godzinach od Tp do Tk; 
