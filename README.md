@@ -306,6 +306,58 @@ Wynik:
 [2026-02-02 01:10:47] Client 901862 goes away - ended shopping
 ```
 Klienci wyszli bez oczekiwania na paragon oraz odłożyli produkty do kosza ✅
+### 3. Test obciążeniowy
+Do wykonania tego testu musimy odpowiednio przygotować plik konfiguracyjny (config.h), w którym należy ustawić następujące opcje umożliwiające nam zwiększyć ilość generowanych klientów. Dodatkowo możemy dorzucić sobie sleepa w kasjerze, aby troche spowolnić klienta w sklepie
+```c++
+#define MAX_PROCESSES 5000
+...
+#define CUSTOMER_SPAWN_MIN_TIME 0.000f 
+#define CUSTOMER_SPAWN_MAX_TIME 0.000f
+```
+![obraz](https://i.imgur.com/bQnvW3m.png)
+[link alternatywny do obrazu](https://i.imgur.com/bQnvW3m.png)
+Na screenie z htopa widać, że utworzono 5000 procesów, które usypiają na semaforze, dzięki czemu pomimo mamy niskie zużycie procesora ✅
+### 4. Test sprawdzający czy klient ominie tacke, jezeli nie ma produktu
+Klient powinien spróbować wziąć produkt ale jeżeli tacka jest pusta to go ominąć - w tym przypadku klient zauważa, że jedynym produktem na tackach z tych, które chce jest Dubai Chcocolate, reszte z pomimo braków pomija
+```
+[2026-02-02 09:56:22] Client 112525 tries to enter the shop - currently clients inside: 14/20
+[2026-02-02 09:56:22] Client 112525 enters shop
+[2026-02-02 09:56:22] Client 112525 tries to take product Coconut cookie if possible
+[2026-02-02 09:56:22] Client 112525 could not take Coconut cookie goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product WZ-ka if possible
+[2026-02-02 09:56:22] Client 112525 could not take WZ-ka goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Piegusek if possible
+[2026-02-02 09:56:22] Client 112525 could not take Piegusek goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Chocolate Chip if possible
+[2026-02-02 09:56:22] Client 112525 could not take Chocolate Chip goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Dubai Chocolate if possible
+[2026-02-02 09:56:22] Client 112525 is locking product Dubai Chocolate mutex
+[2026-02-02 09:56:22] Client 112525 is locking shared data mutex
+[2026-02-02 09:56:22] Client 112525 tries to take product Dubai Chocolate if possible
+[2026-02-02 09:56:22] Client 112525 is locking product Dubai Chocolate mutex
+[2026-02-02 09:56:22] Client 112525 is locking shared data mutex
+[2026-02-02 09:56:22] Client 112525 tries to take product Dubai Chocolate if possible
+[2026-02-02 09:56:22] Client 112525 could not take Dubai Chocolate goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Kremowka if possible
+[2026-02-02 09:56:22] Client 112525 could not take Kremowka goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Piernik if possible
+[2026-02-02 09:56:22] Client 112525 could not take Piernik goes to next
+[2026-02-02 09:56:22] Client 112525 tries to take product Amaretti if possible
+[2026-02-02 09:56:22] Client 112525 could not take Amaretti goes to next
+[2026-02-02 09:56:22] Client 112525 joins queue to cashier 2 at 5 place
+[2026-02-02 09:56:22] Client 112525 gives product list to 2
+[2026-02-02 09:56:22] Client 112525 is waiting for checkout
+```
+```
+==================================
+    RECEIPT - CLIENT 112525
+==================================
+Dubai Chocolate 2 - 16.50
+==================================
+TOTAL: 16.50$
+==================================
+```
+Kasjer poprawnie skasował jedyne dwa produkty, które chciał klient i mógł wziąć klient ✅
 ## Temat 15 – Ciastkarnia
 Ciastkarnia produkuje P różnych produktów (P>10), każdy w innej cenie i na bieżąco sprzedaje je w samoobsługowym sklepie firmowym. Produkty bezpośrednio po wypieku (losowa liczba sztuk różnych produktów co określony czas) trafiają do sprzedaży w sklepie – każdy rodzaj produktu Pi na oddzielny podajnik. Każdy podajnik może przetransportować w danej chwili maksymalnie Ki sztuk pieczywa. Ciastka z danego podajnika muszą być pobieranie w sklepie dokładnie w takiej kolejności jak zostało położone na tym podajniku w piekarni. Zasady działania ciastkarni przyjęte przez kierownika są następujące: 
 -  Ciastkarnia jest czynna w godzinach od Tp do Tk; 
